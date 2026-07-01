@@ -1,158 +1,69 @@
-import { useEffect, useState } from "react";
-import {
-  addKeyword,
-  deleteKeyword,
-  getKeywords,
-  updateKeywordEnabled,
-} from "../services/keywordService";
+import { useMemo, useState } from "react";
+
+import KeywordForm from "../components/keyword/KeywordForm";
+import KeywordTable from "../components/keyword/KeywordTable";
+
+import { useKeywords } from "../hooks/useKeywords";
 import { Keyword } from "../types/keyword";
 
 export default function KeywordPage() {
-  const [keywords, setKeywords] = useState<Keyword[]>([]);
-  const [keyword, setKeyword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { data = [], isLoading, create, remove, toggle } = useKeywords();
 
-  async function loadKeywords() {
-    try {
-      const list = await getKeywords();
-      setKeywords(list);
-    } catch (err) {
-      console.error(err);
-      alert("키워드 조회 실패");
-    }
-  }
+  const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    loadKeywords();
-  }, []);
+  const filteredKeywords = useMemo(() => {
+    return data.filter((item) =>
+      item.keyword.toLowerCase().includes(search.toLowerCase()),
+    );
+  }, [data, search]);
 
-  async function handleAdd() {
-    if (loading) return;
-
-    const value = keyword.trim();
-
-    if (!value) {
-      alert("키워드를 입력하세요.");
-      return;
-    }
-
-    if (keywords.some((k) => k.keyword.toLowerCase() === value.toLowerCase())) {
+  async function handleAdd(keyword: string) {
+    if (
+      data.some((item) => item.keyword.toLowerCase() === keyword.toLowerCase())
+    ) {
       alert("이미 등록된 키워드입니다.");
       return;
     }
 
-    try {
-      setLoading(true);
-
-      await addKeyword(value);
-
-      setKeyword("");
-
-      await loadKeywords();
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message);
-    } finally {
-      setLoading(false);
-    }
+    await create.mutateAsync(keyword);
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("삭제하시겠습니까?")) return;
-
-    try {
-      await deleteKeyword(id);
-      await loadKeywords();
-    } catch (err) {
-      console.error(err);
-      alert("삭제 실패");
-    }
+    await remove.mutateAsync(id);
   }
 
   async function handleToggle(item: Keyword) {
-    try {
-      await updateKeywordEnabled(item.id, !item.enabled);
+    await toggle.mutateAsync({
+      id: item.id,
+      enabled: !item.enabled,
+    });
+  }
 
-      await loadKeywords();
-    } catch (err) {
-      console.error(err);
-      alert("수정 실패");
-    }
+  if (isLoading) {
+    return <h2>Loading...</h2>;
   }
 
   return (
     <div>
       <h1>키워드 관리</h1>
 
-      <div
-        style={{
-          marginTop: 20,
-          marginBottom: 20,
-        }}
-      >
-        <input
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              handleAdd();
-            }
-          }}
-          placeholder="키워드를 입력하세요."
-        />
+      <p>총 {filteredKeywords.length}개의 키워드</p>
 
-        <button onClick={handleAdd} disabled={loading}>
-          추가
-        </button>
+      <KeywordForm onAdd={handleAdd} loading={create.isPending} />
+
+      <div style={{ marginBottom: 20 }}>
+        <input
+          placeholder="검색..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
-      <table
-        border={1}
-        cellPadding={10}
-        style={{
-          borderCollapse: "collapse",
-          width: "100%",
-        }}
-      >
-        <thead>
-          <tr>
-            <th>사용</th>
-            <th>키워드</th>
-            <th>등록일</th>
-            <th>삭제</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {keywords.map((item) => (
-            <tr key={item.id}>
-              <td>
-                <input
-                  type="checkbox"
-                  checked={item.enabled}
-                  onChange={() => handleToggle(item)}
-                />
-              </td>
-
-              <td>{item.keyword}</td>
-
-              <td>{new Date(item.created_at).toLocaleDateString()}</td>
-
-              <td>
-                <button onClick={() => handleDelete(item.id)}>삭제</button>
-              </td>
-            </tr>
-          ))}
-
-          {keywords.length === 0 && (
-            <tr>
-              <td colSpan={4} align="center">
-                등록된 키워드가 없습니다.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <KeywordTable
+        keywords={filteredKeywords}
+        onDelete={handleDelete}
+        onToggle={handleToggle}
+      />
     </div>
   );
 }

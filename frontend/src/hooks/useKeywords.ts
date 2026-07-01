@@ -1,8 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import {
-  getKeywords,
   createKeyword,
+  getKeywords,
   removeKeyword,
   updateKeywordEnabled,
 } from "../services/keywordService";
@@ -15,33 +19,32 @@ export function useKeywords() {
     queryFn: getKeywords,
   });
 
+  const refresh = () =>
+    queryClient.invalidateQueries({
+      queryKey: ["keywords"],
+    });
+
   const create = useMutation({
     mutationFn: createKeyword,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["keywords"],
-      });
-    },
+    onSuccess: refresh,
   });
 
   const remove = useMutation({
     mutationFn: removeKeyword,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["keywords"],
-      });
-    },
+    onSuccess: refresh,
   });
 
   const toggle = useMutation({
-    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+    mutationFn: ({
+      id,
+      enabled,
+    }: {
+      id: string;
+      enabled: boolean;
+    }) =>
       updateKeywordEnabled(id, enabled),
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["keywords"],
-      });
-    },
+    onSuccess: refresh,
   });
 
   return {
