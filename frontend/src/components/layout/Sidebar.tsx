@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 const menus = [
   { name: "📊 대시보드", path: "/" },
   { name: "🔍 키워드 관리", path: "/keywords" },
-  { name: "📦 수집 결과", path: "/collect" },
+  { name: "📦 수집 결과", path: "/results" },
   { name: "🏷 브랜드 관리", path: "/brands" },
   { name: "⚙ 설정", path: "/settings" },
 ];

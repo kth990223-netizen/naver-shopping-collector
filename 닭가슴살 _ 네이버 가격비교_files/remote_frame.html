@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<!-- saved from url=(0046)https://m.shopping.naver.com/remote_frame.html -->
+<html lang="ko"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Remote Frame Storage</title>
+    
+    <meta http-equiv="Content-Script-Type" content="text/javascript">
+</head>
+<body>
+<script type="text/javascript" src="./remote_frame_storage.js.다운로드"></script>
+<script type="text/javascript">
+    var oRFS = new nhn.mobile.fs.RemoteFrameStorage({
+        bCheckDomain : true,
+        aWhiteDomainList : [
+            "shopping.naver.com",
+            "m.shopping.naver.com",
+            "search.shopping.naver.com",
+            "msearch.shopping.naver.com"
+        ]
+    }).ready();
+</script>
+<h1 style="overflow: hidden;position: absolute;top: 0;left: 0;clip: rect(0 0 0 0);width: 1px;height: 1px;margin: -1px;padding: 0;border: 0;">Remote Frame Storage</h1>
+
+
+</body></html>
