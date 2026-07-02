@@ -4,7 +4,7 @@ import KeywordForm from "../components/keyword/KeywordForm";
 import KeywordTable from "../components/keyword/KeywordTable";
 
 import { useKeywords } from "../hooks/useKeywords";
-import { Keyword } from "../types/keyword";
+import type { Keyword } from "../types/keyword";
 
 export default function KeywordPage() {
   const { data = [], isLoading, create, remove, toggle } = useKeywords();

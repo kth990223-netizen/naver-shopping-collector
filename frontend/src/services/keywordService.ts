@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabase";
-import { Keyword } from "../types/keyword";
+import type { Keyword } from "../types/keyword";
 
 export async function getKeywords(): Promise<Keyword[]> {
   const { data, error } = await supabase

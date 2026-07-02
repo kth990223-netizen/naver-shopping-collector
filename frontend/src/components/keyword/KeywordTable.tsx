@@ -1,5 +1,5 @@
 import KeywordRow from "./KeywordRow";
-import { Keyword } from "../../types/keyword";
+import type { Keyword } from "../../types/keyword";
 
 interface Props {
   keywords: Keyword[];

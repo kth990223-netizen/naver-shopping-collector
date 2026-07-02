@@ -1,4 +1,4 @@
-import { Keyword } from "../../types/keyword";
+import type { Keyword } from "../../types/keyword";
 
 interface Props {
   keyword: Keyword;
