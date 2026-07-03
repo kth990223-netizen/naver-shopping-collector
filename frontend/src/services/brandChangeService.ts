@@ -1,29 +1,37 @@
 import { supabase } from "../lib/supabase";
 
-export interface BrandChange {
+export interface RunSnapshot {
+  collectedAt: string;
+  brands: string[];
+}
+
+export interface KeywordHistory {
   keyword: string;
-  latestRunAt: string;
-  previousRunAt: string | null;
-  latestCount: number;
-  previousCount: number | null;
+  runs: RunSnapshot[]; // collectedAt 오름차순
+}
+
+export interface RunTransition {
+  fromRunAt: string | null;
+  toRunAt: string;
+  count: number;
   diffCount: number | null;
   added: string[];
   removed: string[];
 }
 
 /**
- * 키워드별로 가장 최근 수집(run)과 그 이전 수집을 비교해서
- * 신규 진입/이탈 브랜드와 개수 차이를 계산한다.
+ * 키워드별로 수집 실행(run)을 시간순으로 묶어서 반환한다.
+ * 같은 수집 실행에서 저장된 행들은 collected_at 값이 동일하므로 이를 묶음 기준으로 쓴다.
  *
- * "오늘/어제"가 아니라 "가장 최근 수집 vs 그 이전 수집"으로 비교한다 —
- * 매일 수집이 돌아간다는 보장이 없어서, 달력 날짜보다 실제 수집 회차 기준이 안전하다.
- * 같은 수집 실행(run)에서 저장된 행들은 collected_at 값이 동일하므로 이를 묶음 기준으로 쓴다.
+ * 여기서는 날짜로 따로 필터링하지 않는다 — crawler가 매 수집 실행마다
+ * RESULT_RETENTION_DAYS(7일)보다 오래된 collect_results 행을 삭제하므로,
+ * 이 테이블에는 항상 최근 7일치만 남아있다는 전제로 전체 조회한다.
  */
-export async function getBrandChanges(): Promise<BrandChange[]> {
+export async function getKeywordHistories(): Promise<KeywordHistory[]> {
   const { data, error } = await supabase
     .from("collect_results")
     .select("keyword, brand_name, collected_at")
-    .order("collected_at", { ascending: false });
+    .order("collected_at", { ascending: true });
 
   if (error) throw error;
 
@@ -43,45 +51,51 @@ export async function getBrandChanges(): Promise<BrandChange[]> {
     runs.get(row.collected_at)!.add(row.brand_name);
   }
 
-  const changes: BrandChange[] = [];
+  const histories: KeywordHistory[] = [];
 
-  for (const [keyword, runs] of byKeyword) {
-    // collected_at은 ISO 문자열이라 문자열 정렬이 곧 시간순 정렬이다.
-    const runTimestamps = [...runs.keys()].sort((a, b) => b.localeCompare(a));
+  for (const [keyword, runsMap] of byKeyword) {
+    const runs = [...runsMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([collectedAt, brandSet]) => ({
+        collectedAt,
+        brands: [...brandSet].sort(),
+      }));
 
-    const [latestAt, previousAt] = runTimestamps;
-    const latestBrands = runs.get(latestAt)!;
+    histories.push({ keyword, runs });
+  }
 
-    if (!previousAt) {
-      changes.push({
-        keyword,
-        latestRunAt: latestAt,
-        previousRunAt: null,
-        latestCount: latestBrands.size,
-        previousCount: null,
+  return histories.sort((a, b) => a.keyword.localeCompare(b.keyword));
+}
+
+/**
+ * 한 키워드의 수집 회차들을 연속된 쌍으로 비교해서 회차별 신규/이탈 브랜드를 계산한다.
+ * (순수 함수 — Supabase 호출 없음)
+ */
+export function getTransitions(history: KeywordHistory): RunTransition[] {
+  return history.runs.map((run, i) => {
+    const prev = history.runs[i - 1];
+
+    if (!prev) {
+      return {
+        fromRunAt: null,
+        toRunAt: run.collectedAt,
+        count: run.brands.length,
         diffCount: null,
         added: [],
         removed: [],
-      });
-      continue;
+      };
     }
 
-    const previousBrands = runs.get(previousAt)!;
+    const prevSet = new Set(prev.brands);
+    const currSet = new Set(run.brands);
 
-    const added = [...latestBrands].filter((b) => !previousBrands.has(b)).sort();
-    const removed = [...previousBrands].filter((b) => !latestBrands.has(b)).sort();
-
-    changes.push({
-      keyword,
-      latestRunAt: latestAt,
-      previousRunAt: previousAt,
-      latestCount: latestBrands.size,
-      previousCount: previousBrands.size,
-      diffCount: latestBrands.size - previousBrands.size,
-      added,
-      removed,
-    });
-  }
-
-  return changes.sort((a, b) => a.keyword.localeCompare(b.keyword));
+    return {
+      fromRunAt: prev.collectedAt,
+      toRunAt: run.collectedAt,
+      count: run.brands.length,
+      diffCount: run.brands.length - prev.brands.length,
+      added: run.brands.filter((b) => !prevSet.has(b)),
+      removed: prev.brands.filter((b) => !currSet.has(b)),
+    };
+  });
 }

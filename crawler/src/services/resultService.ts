@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { RESULT_RETENTION_DAYS } from "../config/constants";
 import type { Ad } from "../types/ad";
 
 /**
@@ -20,6 +21,23 @@ export async function saveResults(ads: Ad[]): Promise<void> {
   }));
 
   const { error } = await supabase.from("collect_results").insert(rows);
+
+  if (error) throw error;
+}
+
+/**
+ * RESULT_RETENTION_DAYS보다 오래된 collect_results 행을 삭제한다.
+ * 프론트엔드 "브랜드 변동" 페이지가 별도 날짜 필터 없이 전체 조회해도
+ * 항상 최근 RESULT_RETENTION_DAYS일치만 남아있도록 보장하기 위함이다.
+ */
+export async function deleteOldResults(): Promise<void> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - RESULT_RETENTION_DAYS);
+
+  const { error } = await supabase
+    .from("collect_results")
+    .delete()
+    .lt("collected_at", cutoff.toISOString());
 
   if (error) throw error;
 }

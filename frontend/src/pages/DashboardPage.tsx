@@ -1,12 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDashboardStats } from "../hooks/useDashboardStats";
-import { useCollectorStatus, useStartCollection } from "../hooks/useCollector";
+import { useCollectorStatus, useStartCollection, useStopServer } from "../hooks/useCollector";
+import { useCleanupOldResults } from "../hooks/useCleanupOldResults";
+import { RESULT_RETENTION_DAYS } from "../services/cleanupService";
 
 export default function DashboardPage() {
   const { data, isLoading } = useDashboardStats();
   const { data: collectorStatus, isError: collectorUnreachable } = useCollectorStatus();
   const startCollection = useStartCollection();
+  const stopServer = useStopServer();
+  const cleanup = useCleanupOldResults();
+  const [cleanupMessage, setCleanupMessage] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const wasRunning = useRef(false);
@@ -29,6 +34,21 @@ export default function DashboardPage() {
   const isRunning = collectorStatus?.running ?? false;
   const buttonDisabled = collectorUnreachable || isRunning || startCollection.isPending;
 
+  async function handleCleanup() {
+    const confirmed = window.confirm(
+      `수집 후 ${RESULT_RETENTION_DAYS}일이 지난 수집 결과를 모두 삭제합니다. 이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const deletedCount = await cleanup.mutateAsync();
+      setCleanupMessage(`${deletedCount}건 삭제되었습니다.`);
+    } catch (err) {
+      setCleanupMessage(`삭제 실패: ${(err as Error).message}`);
+    }
+  }
+
   return (
     <>
       <div className="mb-8 flex items-center justify-between">
@@ -47,12 +67,30 @@ export default function DashboardPage() {
             </span>
           )}
 
+          {cleanupMessage && <span className="text-sm text-slate-400">{cleanupMessage}</span>}
+
+          <button
+            onClick={handleCleanup}
+            disabled={cleanup.isPending}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {cleanup.isPending ? "삭제 중..." : `오래된 데이터 삭제 (${RESULT_RETENTION_DAYS}일+)`}
+          </button>
+
           <button
             onClick={() => startCollection.mutate()}
             disabled={buttonDisabled}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isRunning ? "수집 중..." : "수집 시작"}
+          </button>
+
+          <button
+            onClick={() => stopServer.mutate()}
+            disabled={collectorUnreachable || isRunning || stopServer.isPending}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {stopServer.isPending ? "종료 중..." : "로컬 서버 종료"}
           </button>
         </div>
       </div>

@@ -6,10 +6,11 @@
 
 | 경로 | 설명 |
 |---|---|
-| `/` (대시보드) | 전체 키워드/브랜드 수, 오늘 수집 건수, 최근 수집 시각. "수집 시작" 버튼으로 **로컬에서 실행 중인 크롤러 서버**(`../crawler`)에 수집을 요청할 수 있음 (배포된 사이트에서는 동작하지 않음, 로컬 실행 시에만 동작) |
+| `/` (대시보드) | 전체 키워드/브랜드 수, 오늘 수집 건수, 최근 수집 시각. "수집 시작"/"로컬 서버 종료" 버튼으로 **로컬에서 실행 중인 크롤러 서버**(`../crawler`)를 제어할 수 있음 (배포된 사이트에서는 동작하지 않음, 로컬 실행 시에만 동작. 서버를 "시작"하는 버튼은 만들 수 없음 — `crawler/README.md`의 알려진 이슈 참고). "오래된 데이터 삭제" 버튼은 Supabase에 직접 접속하는 순수 DB 작업이라 배포된 사이트에서도 동작함 |
 | `/keywords` (키워드 관리) | 수집할 키워드 등록/삭제/활성화 토글. 활성화(`enabled=true`)된 키워드만 크롤러가 수집 |
 | `/results` (수집 결과) | 수집된 광고 상품 목록. 키워드/브랜드/상품명으로 검색 가능 |
 | `/brands` (브랜드 관리) | 수집 중 발견된 브랜드(판매처) 목록 |
+| `/brand-changes` (브랜드 변동) | 키워드별 브랜드 수 추이 그래프(recharts), "상세보기" 모달로 회차별 신규/이탈 브랜드 확인, 키워드 검색 |
 | `/settings` (설정) | 아직 구현되지 않음 (placeholder) |
 
 ## 데이터 흐름
@@ -17,10 +18,13 @@
 프론트엔드는 별도 API 서버 없이 Supabase(`@supabase/supabase-js`)에 직접 연결합니다.
 
 - `src/lib/supabase.ts` — Supabase 클라이언트 생성
-- `src/services/*Service.ts` — 테이블별 조회/변경 함수 (`keywordService`, `brandService`, `collectResultService`, `dashboardService`)
+- `src/services/*Service.ts` — 테이블별 조회/변경 함수 (`keywordService`, `brandService`, `collectResultService`, `dashboardService`, `brandChangeService`, `cleanupService`)
 - `src/hooks/*` — 위 서비스를 `@tanstack/react-query`로 감싼 훅
+- `src/components/common/Modal.tsx` — 공용 모달 (브랜드 변동 페이지의 "상세보기"에서 사용)
 
-"수집 시작" 버튼은 Supabase가 아니라 **로컬에서 실행 중인 크롤러의 HTTP 서버**(`http://localhost:8787`)를 직접 호출합니다 (`src/services/collectorClient.ts`, `src/hooks/useCollector.ts`). 크롤러 서버가 꺼져있으면 대시보드에 "로컬 수집 서버에 연결할 수 없습니다" 메시지가 뜨고 버튼이 비활성화됩니다.
+"수집 시작"/"로컬 서버 종료" 버튼은 Supabase가 아니라 **로컬에서 실행 중인 크롤러의 HTTP 서버**(`http://localhost:8787`)를 직접 호출합니다 (`src/services/collectorClient.ts`, `src/hooks/useCollector.ts`). 크롤러 서버가 꺼져있으면 대시보드에 "로컬 수집 서버에 연결할 수 없습니다" 메시지가 뜨고 두 버튼 모두 비활성화됩니다. 서버 자체를 켜는 건 브라우저 보안 정책상 프론트엔드 버튼으로 할 수 없어서, `crawler/start-server.bat` 더블클릭이나 `npm run server` 명령으로 직접 실행해야 합니다.
+
+"오래된 데이터 삭제" 버튼(`src/services/cleanupService.ts`)은 위와 달리 크롤러를 거치지 않고 Supabase에 직접 delete 쿼리를 날립니다 — `collected_at`이 `RESULT_RETENTION_DAYS`(기본 7일, crawler의 동일 이름 상수와 값을 맞춰야 함)보다 오래된 `collect_results` 행을 지웁니다. 되돌릴 수 없는 작업이라 클릭 시 `window.confirm`으로 한 번 더 확인합니다.
 
 ## 개발
 

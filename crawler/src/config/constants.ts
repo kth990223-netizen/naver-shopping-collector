@@ -38,3 +38,7 @@ export const ALLOWED_DASHBOARD_ORIGINS = [
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5180",
 ];
+
+// collect_results는 이보다 오래된 데이터를 매 수집 실행마다 삭제한다.
+// (프론트엔드 "브랜드 변동" 페이지는 이 값을 신뢰하고 별도 날짜 필터 없이 전체 조회한다.)
+export const RESULT_RETENTION_DAYS = 7;

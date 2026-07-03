@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getCollectorStatus, startCollection } from "../services/collectorClient";
+import { getCollectorStatus, startCollection, stopServer } from "../services/collectorClient";
 
 export function useCollectorStatus() {
   return useQuery({
@@ -15,6 +15,17 @@ export function useStartCollection() {
 
   return useMutation({
     mutationFn: startCollection,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["collector-status"] });
+    },
+  });
+}
+
+export function useStopServer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: stopServer,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["collector-status"] });
     },

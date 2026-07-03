@@ -30,7 +30,8 @@ npm run server            # 대시보드 "수집 시작" 버튼이 호출하는 
 |---|---|
 | `npm run chrome` | 디버깅 포트(9222)를 연 Chrome 실행. 전용 프로필(`.naver-cdp-profile/`)에 로그인 세션 저장 |
 | `npm run dev` | 활성화된 키워드를 모두 수집하고 종료 (CLI 1회 실행) |
-| `npm run server` | `127.0.0.1:8787`에서 `POST /collect`, `GET /status`를 제공하는 로컬 서버 |
+| `npm run server` | `127.0.0.1:8787`에서 `POST /collect`, `GET /status`, `POST /shutdown`을 제공하는 로컬 서버. `/collect`는 서버 프로세스 안에서 조용히 수집하는 대신 **새 cmd 창을 띄워 그 안에서 `npm run chrome` → `npm run dev`를 순서대로 실행**한다 (캡차 대응/로그를 그 창에서 바로 확인 가능, 미리 Chrome을 띄워둘 필요 없음). `/shutdown`은 대시보드의 "로컬 서버 종료" 버튼이 호출하며, 수집 진행 중에는 거부한다. Windows 전용(`cmd.exe`/`start` 사용) |
+| `start-server.bat` | `npm run server`를 더블클릭만으로 실행하는 launcher. 대시보드에는 서버를 "시작"하는 버튼을 만들 수 없다 (아래 참고) |
 
 ## 수집 로직
 
@@ -38,6 +39,8 @@ npm run server            # 대시보드 "수집 시작" 버튼이 호출하는 
 2. 키워드마다 1~`MAX_PAGE`(기본 18) 페이지를 순회하며 검색결과 HTML을 가져옴
 3. 각 페이지의 `__NEXT_DATA__` JSON에서 상품 목록을 파싱하고, `adId`가 있고 `isBrandStore`가 아닌 상품만 필터링
 4. 결과를 Supabase `collect_results`에 누적 저장(같은 키워드를 다시 수집해도 기존 결과는 지우지 않음), 등장한 브랜드(몰)명을 `brands` 테이블에 upsert(`first_seen`/`last_seen` 관리)
+
+크롤러는 수집만 담당하고, 오래된 데이터 삭제는 하지 않는다 (별도 프로그램에서 처리 예정). `src/services/resultService.ts`의 `deleteOldResults()`는 `RESULT_RETENTION_DAYS`(기본 7일)보다 오래된 `collect_results` 행을 지우는 함수로, 크롤러 수집 흐름에는 연결되어 있지 않고 별도 정리 프로그램에서 재사용할 수 있도록 남겨둔 상태다.
 
 ## 주요 파일
 
@@ -60,7 +63,10 @@ npm run server            # 대시보드 "수집 시작" 버튼이 호출하는 
 - `CDP_PORT` / `CDP_ENDPOINT` — Chrome 디버깅 연결 정보
 - `CDP_PROFILE_DIR` — 로그인 세션이 저장되는 전용 Chrome 프로필 경로 (`.gitignore` 처리됨)
 - `LOCAL_SERVER_PORT` / `ALLOWED_DASHBOARD_ORIGINS` — 로컬 서버 포트와 CORS 허용 origin (로컬 개발 포트만 허용, 배포된 사이트는 차단됨)
+- `RESULT_RETENTION_DAYS` — `collect_results` 보관 기간(기본 7일). 매 수집 실행마다 이보다 오래된 행을 삭제
 
 ## 알려진 이슈
 
 - `src/services/graphqlClient.ts`는 초기 구현(SSR 페이지 파싱 방식으로 전환하기 전) 방식의 죽은 코드입니다. 현재 `Ad` 타입과 필드가 맞지 않아 `npx tsc --noEmit` 시 이 파일만 타입 에러가 납니다. 삭제 예정.
+- `server.ts`의 `/collect`는 `cmd /c start /wait ... cmd /c "npm run chrome && timeout /t 3 /nobreak >nul && npm run dev && pause"` 형태로 새 창을 띄운다. `npm run chrome`은 백그라운드로 Chrome을 띄우고 바로 반환되므로 CDP 포트가 열릴 시간을 벌기 위해 3초 지연을 둔다 — 만약 Chrome이 3초 안에 뜨지 못하는 느린 환경이라면 `npm run dev`의 `ensureBrowserReady()`가 실패할 수 있으니 지연 시간을 늘려야 할 수 있다. `start /wait`가 그 창이 닫힐 때까지 기다려서 `running` 상태를 추적하는 구조라, 사용자가 수집이 끝난 뒤 `pause` 프롬프트에서 아무 키나 누르기 전까지는 대시보드에 계속 "수집 중"으로 표시된다 (의도된 동작). Windows `cmd.exe` 문법에 의존하므로 다른 OS에서는 동작하지 않는다.
+- **로컬 서버(`npm run server`)를 "시작"하는 프론트엔드 버튼은 만들 수 없다.** "수집 시작"/"로컬 서버 종료" 버튼은 이미 떠있는 로컬 서버에게 브라우저가 요청을 보내는 구조라 동작하지만, 서버가 꺼져있으면 요청을 받아줄 대상 자체가 없다. 브라우저는 웹페이지가 로컬 프로그램을 직접 실행하는 것을 허용하지 않으므로(보안상 당연한 제약), 서버 실행은 `start-server.bat` 더블클릭이나 터미널 명령으로 브라우저 바깥에서 해야 한다.

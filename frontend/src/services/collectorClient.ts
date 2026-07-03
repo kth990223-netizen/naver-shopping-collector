@@ -3,7 +3,6 @@ const CRAWLER_SERVER_URL = "http://localhost:8787";
 export interface CollectorStatus {
   running: boolean;
   lastRunAt: string | null;
-  lastResult: { keywordCount: number; totalAds: number } | null;
   lastError: string | null;
 }
 
@@ -25,5 +24,18 @@ export async function startCollection(): Promise<void> {
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.error ?? "수집 시작 실패");
+  }
+}
+
+/**
+ * 로컬 수집 서버 자체를 종료시킨다. 서버가 자기 자신에게 응답을 보낸 뒤
+ * process.exit()하는 구조라, 응답이 안 와도(연결이 끊기며) 정상일 수 있다.
+ */
+export async function stopServer(): Promise<void> {
+  const res = await fetch(`${CRAWLER_SERVER_URL}/shutdown`, { method: "POST" });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "서버 종료 실패");
   }
 }
