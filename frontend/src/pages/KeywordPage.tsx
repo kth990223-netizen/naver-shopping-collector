@@ -40,22 +40,25 @@ export default function KeywordPage() {
   }
 
   if (isLoading) {
-    return <h2>Loading...</h2>;
+    return <h2 className="text-lg text-slate-500">Loading...</h2>;
   }
 
   return (
     <div>
-      <h1>키워드 관리</h1>
+      <h1 className="text-3xl font-bold text-slate-900">키워드 관리</h1>
 
-      <p>총 {filteredKeywords.length}개의 키워드</p>
+      <p className="mt-2 mb-6 text-sm text-slate-500">
+        총 {filteredKeywords.length}개의 키워드
+      </p>
 
       <KeywordForm onAdd={handleAdd} loading={create.isPending} />
 
-      <div style={{ marginBottom: 20 }}>
+      <div className="mb-5">
         <input
           placeholder="검색..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          className="w-72 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
         />
       </div>
 

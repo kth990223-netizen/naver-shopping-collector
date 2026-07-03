@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "chrome": "tsx src/scripts/launchChrome.ts"
   },
   "keywords": [],
   "author": "",
@@ -16,10 +17,11 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.0",
     "axios": "^1.18.1",
     "cheerio": "^1.2.0",
+    "dotenv": "^17.4.2",
     "playwright-extra": "^4.3.6",
-    "playwright-extra-plugin-stealth": "^0.0.1"
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   }
 }
-

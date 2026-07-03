@@ -21,7 +21,7 @@ export default function KeywordForm({ onAdd, loading }: KeywordFormProps) {
   };
 
   return (
-    <div style={{ marginBottom: 20 }}>
+    <div className="mb-5 flex gap-2">
       <input
         value={keyword}
         placeholder="키워드를 입력하세요."
@@ -31,12 +31,13 @@ export default function KeywordForm({ onAdd, loading }: KeywordFormProps) {
             handleSubmit();
           }
         }}
+        className="w-72 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
       />
 
       <button
         onClick={handleSubmit}
         disabled={loading}
-        style={{ marginLeft: 10 }}
+        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
         추가
       </button>

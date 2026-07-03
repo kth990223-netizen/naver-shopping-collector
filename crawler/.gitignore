@@ -1,0 +1,6 @@
+# 네이버 로그인 세션 쿠키가 담기는 영속 브라우저 프로필. 절대 커밋하지 않는다.
+.naver-profile/
+.naver-cdp-profile/
+
+# Supabase 키 등 비밀값
+.env

@@ -1,13 +1,25 @@
 export interface Ad {
   keyword: string;
 
-  brandName: string;
+  page: number;
 
-  productName: string;
+  rank: number;
+
+  productId: string;
+
+  adId: string;
+
+  productTitle: string;
+
+  mallName: string;
+
+  mallId: string;
+
+  price: number;
+
+  listPrice: number;
 
   productUrl: string;
 
-  adRank: number;
-
-  page: number;
+  isBrandStore: boolean;
 }

@@ -1,0 +1,1 @@
+line1 with a colon: focus:border-blue-500 focus:outline-none and more text after colon to see if truncated at colon character exactly like the tsx file did earlier abcdefghijklmnopqrstuvwxyz
