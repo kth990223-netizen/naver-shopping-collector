@@ -26,3 +26,15 @@ export const CDP_ENDPOINT = `http://localhost:${CDP_PORT}`;
 // npm run chrome이 사용하는 전용 Chrome 프로필 경로. 로그인 세션 쿠키가 담기므로
 // 반드시 .gitignore에 포함되어야 한다. (사용자의 평소 크롬 프로필과는 별개)
 export const CDP_PROFILE_DIR = path.resolve(__dirname, "../../.naver-cdp-profile");
+
+// 대시보드의 "수집 시작" 버튼이 호출하는 로컬 전용 HTTP 서버.
+// 127.0.0.1에만 바인딩되어 외부에서 접근 불가하며, 프론트엔드가 로컬(localhost)로
+// 열려있을 때만 CORS로 허용된다 — 배포된 Vercel 사이트에서는 동작하지 않는다.
+export const LOCAL_SERVER_PORT = 8787;
+
+export const ALLOWED_DASHBOARD_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:5180",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5180",
+];

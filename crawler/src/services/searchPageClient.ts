@@ -87,6 +87,15 @@ async function getContext(): Promise<BrowserContext> {
 }
 
 /**
+ * CDP 연결과 로그인 상태를 미리 확인한다. 서버(로컬 헬퍼 서버)에서 수집을
+ * 시작하기 전에 호출해서, Chrome이 안 떠있으면 페이지마다 재시도하며
+ * 시간을 낭비하는 대신 바로 실패하게 한다.
+ */
+export async function ensureBrowserReady(): Promise<void> {
+  await getContext();
+}
+
+/**
  * 수집이 끝나면 반드시 호출해서 CDP 연결을 정리한다.
  * CDP로 연결된 browser는 close()를 호출해도 실제 Chrome 프로세스는 종료되지 않고
  * 연결만 끊긴다 (사용자가 띄워둔 브라우저 창은 그대로 남아있다).
