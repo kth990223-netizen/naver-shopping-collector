@@ -4,6 +4,7 @@ import AdminLayout from "./layouts/AdminLayout";
 import DashboardPage from "./pages/DashboardPage";
 import KeywordPage from "./pages/KeywordPage";
 import BrandPage from "./pages/BrandPage";
+import BrandChangePage from "./pages/BrandChangePage";
 import SettingPage from "./pages/SettingPage";
 import ResultPage from "./pages/ResultPage";
 
@@ -15,6 +16,7 @@ function App() {
         <Route path="keywords" element={<KeywordPage />} />
         <Route path="results" element={<ResultPage />} />
         <Route path="brands" element={<BrandPage />} />
+        <Route path="brand-changes" element={<BrandChangePage />} />
         <Route path="settings" element={<SettingPage />} />
       </Route>
     </Routes>
