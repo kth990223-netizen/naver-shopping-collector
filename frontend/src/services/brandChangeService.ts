@@ -1,4 +1,8 @@
 import { supabase } from "../lib/supabase";
+import { getKeywords } from "./keywordService";
+
+// collect_results 조회 범위(일). crawler의 RESULT_RETENTION_DAYS와 맞춘다.
+const HISTORY_WINDOW_DAYS = 7;
 
 export interface RunSnapshot {
   collectedAt: string;
@@ -20,51 +24,68 @@ export interface RunTransition {
 }
 
 /**
- * 키워드별로 수집 실행(run)을 시간순으로 묶어서 반환한다.
+ * 키워드 하나의 최근 수집 실행(run)들을 시간순으로 묶어서 반환한다.
  * 같은 수집 실행에서 저장된 행들은 collected_at 값이 동일하므로 이를 묶음 기준으로 쓴다.
- *
- * 여기서는 날짜로 따로 필터링하지 않는다 — crawler가 매 수집 실행마다
- * RESULT_RETENTION_DAYS(7일)보다 오래된 collect_results 행을 삭제하므로,
- * 이 테이블에는 항상 최근 7일치만 남아있다는 전제로 전체 조회한다.
+ * 수집 데이터가 없으면 null.
  */
-export async function getKeywordHistories(): Promise<KeywordHistory[]> {
+async function getKeywordHistory(
+  keyword: string,
+  sinceIso: string,
+): Promise<KeywordHistory | null> {
   const { data, error } = await supabase
     .from("collect_results")
-    .select("keyword, brand_name, collected_at")
+    .select("brand_name, collected_at")
+    .eq("keyword", keyword)
+    .gte("collected_at", sinceIso)
     .order("collected_at", { ascending: true });
 
   if (error) throw error;
+  if (!data || data.length === 0) return null;
 
-  const byKeyword = new Map<string, Map<string, Set<string>>>();
+  const runsMap = new Map<string, Set<string>>();
 
-  for (const row of data ?? []) {
-    if (!byKeyword.has(row.keyword)) {
-      byKeyword.set(row.keyword, new Map());
+  for (const row of data) {
+    if (!runsMap.has(row.collected_at)) {
+      runsMap.set(row.collected_at, new Set());
     }
-
-    const runs = byKeyword.get(row.keyword)!;
-
-    if (!runs.has(row.collected_at)) {
-      runs.set(row.collected_at, new Set());
-    }
-
-    runs.get(row.collected_at)!.add(row.brand_name);
+    runsMap.get(row.collected_at)!.add(row.brand_name);
   }
 
-  const histories: KeywordHistory[] = [];
+  const runs = [...runsMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([collectedAt, brandSet]) => ({
+      collectedAt,
+      brands: [...brandSet].sort(),
+    }));
 
-  for (const [keyword, runsMap] of byKeyword) {
-    const runs = [...runsMap.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([collectedAt, brandSet]) => ({
-        collectedAt,
-        brands: [...brandSet].sort(),
-      }));
+  return { keyword, runs };
+}
 
-    histories.push({ keyword, runs });
-  }
+/**
+ * 키워드별로 최근 HISTORY_WINDOW_DAYS일의 수집 이력을 묶어서 반환한다.
+ *
+ * 전체 collect_results를 한 번에 조회하면 Supabase/PostgREST의 기본 1000행 제한에
+ * 걸려 데이터가 잘린다(하루치만 돼도 초과). 그래서 keywords 테이블에서 키워드 목록을
+ * 받아 **키워드별로 개별 쿼리**를 병렬 실행한다 — 각 쿼리는 (키워드 + 7일)로 좁혀져
+ * 1000행을 넘지 않으므로 잘리지 않는다.
+ *
+ * (수집 데이터가 없는 키워드는 제외. keywords 테이블 기준이라, 등록 해제된 키워드는
+ *  최근 데이터가 있어도 표시되지 않는다.)
+ */
+export async function getKeywordHistories(): Promise<KeywordHistory[]> {
+  const keywords = await getKeywords();
 
-  return histories.sort((a, b) => a.keyword.localeCompare(b.keyword));
+  const since = new Date();
+  since.setDate(since.getDate() - HISTORY_WINDOW_DAYS);
+  const sinceIso = since.toISOString();
+
+  const results = await Promise.all(
+    keywords.map((k) => getKeywordHistory(k.keyword, sinceIso)),
+  );
+
+  return results
+    .filter((h): h is KeywordHistory => h !== null)
+    .sort((a, b) => a.keyword.localeCompare(b.keyword));
 }
 
 /**

@@ -35,10 +35,13 @@ npm run server            # 대시보드 "수집 시작" 버튼이 호출하는 
 
 ## 수집 로직
 
-1. Supabase `keywords` 테이블에서 `enabled=true`인 키워드를 조회
-2. 키워드마다 1~`MAX_PAGE`(기본 18) 페이지를 순회하며 검색결과 HTML을 가져옴
+1. Supabase `keywords` 테이블에서 `enabled=true`인 키워드를 조회 (진행 상황은 `[순번/전체]`로 로그에 표시)
+2. 키워드마다 1~`MAX_PAGE`(기본 16) 페이지를 순회하며 검색결과 HTML을 가져옴 (이미지/폰트/CSS는 차단해 로딩을 가볍게 함)
 3. 각 페이지의 `__NEXT_DATA__` JSON에서 상품 목록을 파싱하고, `adId`가 있고 `isBrandStore`가 아닌 상품만 필터링
-4. 결과를 Supabase `collect_results`에 누적 저장(같은 키워드를 다시 수집해도 기존 결과는 지우지 않음), 등장한 브랜드(몰)명을 `brands` 테이블에 upsert(`first_seen`/`last_seen` 관리)
+4. **조기 종료**: "정상 파싱된 광고 0개" 페이지가 `EARLY_STOP_NO_AD_PAGES`(기본 2)회 연속이면 남은 페이지를 건너뛰고 종료. 광고가 있는 페이지를 만나면 카운터 리셋, 수집 실패한 페이지(캡차/네트워크/구조변경)는 판정에서 제외(중립)
+5. 결과를 Supabase `collect_results`에 누적 저장(같은 키워드를 다시 수집해도 기존 결과는 지우지 않음), 등장한 브랜드(몰)명을 `brands` 테이블에 upsert(`first_seen`/`last_seen` 관리)
+
+**차단 대응**: 405/캡차 페이지가 감지되면 리소스 차단을 풀고 페이지를 새로고침한 뒤(그래야 캡차가 제대로 렌더됨) 사용자가 직접 풀 시간을 주고 재시도한다. 418(일시적 접속 제한)은 사람이 풀 수 없는 IP 쿨다운이라 `HardBlockError`로 전체 수집을 즉시 중단한다.
 
 크롤러는 수집만 담당하고, 오래된 데이터 삭제는 하지 않는다 (별도 프로그램에서 처리 예정). `src/services/resultService.ts`의 `deleteOldResults()`는 `RESULT_RETENTION_DAYS`(기본 7일)보다 오래된 `collect_results` 행을 지우는 함수로, 크롤러 수집 흐름에는 연결되어 있지 않고 별도 정리 프로그램에서 재사용할 수 있도록 남겨둔 상태다.
 
@@ -48,8 +51,8 @@ npm run server            # 대시보드 "수집 시작" 버튼이 호출하는 
 - `src/index.ts` — CLI 진입점 (`npm run dev`)
 - `src/server.ts` — 로컬 HTTP 서버 (`npm run server`), 대시보드 버튼이 호출
 - `src/scripts/launchChrome.ts` — `npm run chrome`이 실행하는 스크립트
-- `src/services/searchPageClient.ts` — CDP 연결, 로그인 확인, 캡차 감지/재시도
-- `src/services/collectorService.ts` — 키워드 하나에 대한 페이지 순회 + 지연
+- `src/services/searchPageClient.ts` — CDP 연결, 로그인 확인, 리소스 차단, 캡차 감지/해제·새로고침·재시도, 418 하드 블록(`HardBlockError`)
+- `src/services/collectorService.ts` — 키워드 하나에 대한 페이지 순회 + 지연 + 조기 종료 + 진행 표시
 - `src/parser/shoppingParser.ts` — 검색결과 HTML의 `__NEXT_DATA__`에서 상품 목록 파싱
 - `src/services/keywordService.ts` — Supabase에서 활성 키워드 조회
 - `src/services/resultService.ts` — 수집 결과를 `collect_results`에 저장
@@ -58,7 +61,9 @@ npm run server            # 대시보드 "수집 시작" 버튼이 호출하는 
 
 ## 설정값 (`src/config/constants.ts`)
 
-- `MAX_PAGE` — 키워드당 확인할 페이지 수 (기본 18)
+- `MAX_PAGE` — 키워드당 확인할 최대 페이지 수 (기본 16, 조기 종료로 보통 더 일찍 끝남)
+- `EARLY_STOP_NO_AD_PAGES` — 정상 파싱된 광고 0개 페이지가 이만큼 연속되면 조기 종료 (기본 2)
+- `BLOCKED_RESOURCE_TYPES` — 로딩 차단할 리소스 타입 (image/font/stylesheet/media)
 - `REQUEST_DELAY_MS` / `REQUEST_DELAY_JITTER_MS` — 페이지/키워드 사이 지연(기본 4~7초)
 - `CDP_PORT` / `CDP_ENDPOINT` — Chrome 디버깅 연결 정보
 - `CDP_PROFILE_DIR` — 로그인 세션이 저장되는 전용 Chrome 프로필 경로 (`.gitignore` 처리됨)

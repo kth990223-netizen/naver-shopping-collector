@@ -3,10 +3,20 @@ import path from "node:path";
 export const NAVER_SHOPPING_BASE_URL =
   "https://search.shopping.naver.com/search/all";
 
-// 검색 결과 SSR 페이지(__NEXT_DATA__) 기준 실측값. 리스트뷰 기본 페이지당 노출 개수는 40개.
-export const MAX_PAGE = 18;
+// 키워드당 확인할 최대 페이지(1~MAX_PAGE, 포함). 광고는 보통 앞쪽에 몰려있어
+// 조기 종료(EARLY_STOP_NO_AD_PAGES)로 대부분 더 일찍 끝나고, 이 값은 상한선이다.
+export const MAX_PAGE = 16;
+
+// "정상 파싱된 광고 0개" 페이지가 이만큼 연속되면 조기 종료한다.
+// (광고가 있는 페이지를 만나면 카운터 리셋, 수집 실패한 페이지는 판정에서 제외)
+export const EARLY_STOP_NO_AD_PAGES = 2;
 
 export const PAGE_SIZE = 40;
+
+// 페이지 로딩 속도를 높이기 위해 차단하는 리소스 타입. 우리가 읽는 __NEXT_DATA__는
+// 초기 HTML에 인라인으로 들어있어 이 리소스들은 데이터 추출에 필요 없다.
+// (script/xhr/fetch/document는 절대 차단하지 않는다)
+export const BLOCKED_RESOURCE_TYPES = ["image", "font", "stylesheet", "media"];
 
 // 페이지 간 요청 간격(ms). 사람이 검색결과를 넘겨보는 속도에 가깝게 늘리고,
 // 매번 똑같은 간격이 되지 않도록 지터를 더한다 (실제 지연 = 이 값 ~ 이 값 + JITTER).

@@ -1,5 +1,9 @@
 import { collectKeyword, jitteredDelay } from "./services/collectorService";
-import { closeBrowser, ensureBrowserReady } from "./services/searchPageClient";
+import {
+  closeBrowser,
+  ensureBrowserReady,
+  HardBlockError,
+} from "./services/searchPageClient";
 import { getEnabledKeywords } from "./services/keywordService";
 import { saveResults } from "./services/resultService";
 import { upsertBrandsSeen } from "./services/brandService";
@@ -39,7 +43,19 @@ export async function runCollection(): Promise<CollectionSummary> {
     await ensureBrowserReady();
 
     for (let i = 0; i < keywords.length; i++) {
-      const ads = await collectKeyword(keywords[i].keyword);
+      let ads: Ad[];
+
+      try {
+        ads = await collectKeyword(keywords[i].keyword, i + 1, keywords.length);
+      } catch (err) {
+        // 418 하드 블록이면 남은 키워드까지 돌리는 게 무의미하므로 전체 중단.
+        if (err instanceof HardBlockError) {
+          console.error(`\n${(err as Error).message}`);
+          break;
+        }
+        throw err;
+      }
+
       allAds.push(...ads);
 
       try {

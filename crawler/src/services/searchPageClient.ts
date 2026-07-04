@@ -1,9 +1,23 @@
 import { chromium } from "playwright-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
-import type { Browser, BrowserContext } from "playwright";
+import type { Browser, BrowserContext, Route } from "playwright";
 import { createInterface } from "node:readline/promises";
-import { CDP_ENDPOINT } from "../config/constants";
+import { BLOCKED_RESOURCE_TYPES, CDP_ENDPOINT } from "../config/constants";
 import { buildSearchUrl } from "../utils/url";
+
+/**
+ * 418 "일시적 접속 제한"은 사람이 풀 수 있는 캡차가 아니라 IP 쿨다운이라,
+ * 재시도/사람 대기가 무의미하다. 이 에러가 던져지면 호출부에서 전체 수집을 중단한다.
+ */
+export class HardBlockError extends Error {
+  constructor(status?: number) {
+    super(
+      `네이버가 접속을 일시적으로 제한했습니다 (status ${status}). ` +
+        `IP 쿨다운으로 보이므로 수집을 중단합니다. 수 시간 뒤 다시 시도해주세요.`
+    );
+    this.name = "HardBlockError";
+  }
+}
 
 /**
  * axios(plain HTTP)로는 418(봇 차단)을 계속 받아서 Playwright로 전환했으나,
@@ -106,8 +120,24 @@ export async function closeBrowser(): Promise<void> {
   context = null;
 }
 
-function looksLikeCaptchaOrBlock(status: number, body: string): boolean {
-  return status === 405 || status === 418 || /captcha/i.test(body);
+// 418 = "일시적 접속 제한"(하드 블록, 사람이 풀 수 없음)
+function isHardBlock(status: number): boolean {
+  return status === 418;
+}
+
+// 405 또는 본문에 captcha = 사람이 풀 수 있는 캡차 챌린지
+function isCaptcha(status: number, body: string): boolean {
+  return status === 405 || /captcha/i.test(body);
+}
+
+// 이미지/폰트/CSS/미디어를 차단해 페이지 로딩을 가볍게 한다.
+// (script/xhr/fetch/document는 통과 — 데이터/캡차 동작에 필요)
+function blockResources(route: Route): void {
+  if (BLOCKED_RESOURCE_TYPES.includes(route.request().resourceType())) {
+    route.abort().catch(() => {});
+  } else {
+    route.continue().catch(() => {});
+  }
 }
 
 /**
@@ -118,8 +148,10 @@ function looksLikeCaptchaOrBlock(status: number, body: string): boolean {
  * Playwright는 그 HTML을 얻기 위한 수단일 뿐, 별도 클릭/스크롤 등의
  * 상호작용은 필요 없다 (page.content()만 읽으면 됨).
  *
- * 캡차/차단 페이지가 감지되면 한 번은 사용자가 브라우저 창에서 직접
- * 해결할 시간을 준 뒤 재시도한다.
+ * - 이미지/폰트/CSS는 차단해서 로딩을 빠르게 한다.
+ * - 405/캡차가 감지되면 리소스 차단을 풀고 페이지를 새로고침해서(그래야 캡차가
+ *   제대로 렌더된다) 사용자가 직접 풀 시간을 준 뒤 재시도한다.
+ * - 418(일시적 접속 제한)은 사람이 풀 수 없으므로 HardBlockError로 즉시 중단한다.
  */
 export async function fetchSearchPageHtml(
   keyword: string,
@@ -134,6 +166,9 @@ export async function fetchSearchPageHtml(
     const page = await ctx.newPage();
 
     try {
+      // 이 페이지에만 리소스 차단을 건다 (사용자의 다른 탭에는 영향 없음).
+      await page.route("**/*", blockResources);
+
       const response = await page.goto(url, {
         waitUntil: "domcontentloaded",
         timeout: 20000,
@@ -146,10 +181,22 @@ export async function fetchSearchPageHtml(
       lastStatus = response?.status();
       const bodySnippet = response ? await response.text().catch(() => "") : "";
 
-      if (attempt === 1 && looksLikeCaptchaOrBlock(lastStatus ?? 0, bodySnippet)) {
-        console.error(`  [BLOCKED] status=${lastStatus} — 캡차/차단 페이지로 보입니다.`);
+      if (isHardBlock(lastStatus ?? 0)) {
+        throw new HardBlockError(lastStatus);
+      }
+
+      if (attempt === 1 && isCaptcha(lastStatus ?? 0, bodySnippet)) {
+        console.error(`  [CAPTCHA] status=${lastStatus} — 캡차 페이지로 보입니다.`);
+
+        // 리소스 차단 상태로는 캡차 UI가 깨져서 못 푼다. 차단을 풀고 새로고침해서
+        // 이미지/CSS가 정상 로드되게 한 뒤 사용자에게 넘긴다 (둘 다 best-effort).
+        await page.unroute("**/*", blockResources).catch(() => {});
+        await page
+          .reload({ waitUntil: "domcontentloaded", timeout: 20000 })
+          .catch(() => {});
+
         await waitForEnter(
-          "  브라우저 창을 확인해 캡차가 있으면 직접 풀어주세요. 준비되면 Enter를 눌러 재시도합니다...\n"
+          "  브라우저 창에서 캡차를 직접 풀어주세요. 준비되면 Enter를 눌러 재시도합니다...\n"
         );
       }
     } finally {
