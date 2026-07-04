@@ -10,7 +10,7 @@
 | `/keywords` (키워드 관리) | 수집할 키워드 등록/삭제/활성화 토글. 활성화(`enabled=true`)된 키워드만 크롤러가 수집 |
 | `/results` (수집 결과) | 수집된 광고 상품 목록. 키워드/브랜드/상품명으로 검색 가능 |
 | `/brands` (브랜드 관리) | 수집 중 발견된 브랜드(판매처) 목록 |
-| `/brand-changes` (브랜드 변동) | 키워드별 브랜드 수 추이 그래프(recharts), "상세보기" 모달로 회차별 신규/이탈 브랜드 확인, 키워드 검색 |
+| `/brand-changes` (브랜드 변동) | 키워드별 브랜드 수 추이 그래프(recharts), "상세보기" 모달로 회차별 신규/이탈 브랜드 확인(기본은 최신 1건만, "더보기/접기"로 토글), 키워드 검색, 모달 안에서 Excel 다운로드 및 PDF 저장(인쇄) |
 | `/settings` (설정) | 아직 구현되지 않음 (placeholder) |
 
 ## 데이터 흐름
@@ -25,6 +25,12 @@
 "수집 시작"/"로컬 서버 종료" 버튼은 Supabase가 아니라 **로컬에서 실행 중인 크롤러의 HTTP 서버**(`http://localhost:8787`)를 직접 호출합니다 (`src/services/collectorClient.ts`, `src/hooks/useCollector.ts`). 크롤러 서버가 꺼져있으면 대시보드에 "로컬 수집 서버에 연결할 수 없습니다" 메시지가 뜨고 두 버튼 모두 비활성화됩니다. 서버 자체를 켜는 건 브라우저 보안 정책상 프론트엔드 버튼으로 할 수 없어서, `crawler/start-server.bat` 더블클릭이나 `npm run server` 명령으로 직접 실행해야 합니다.
 
 "오래된 데이터 삭제" 버튼(`src/services/cleanupService.ts`)은 위와 달리 크롤러를 거치지 않고 Supabase에 직접 delete 쿼리를 날립니다 — `collected_at`이 `RESULT_RETENTION_DAYS`(기본 7일, crawler의 동일 이름 상수와 값을 맞춰야 함)보다 오래된 `collect_results` 행을 지웁니다. 되돌릴 수 없는 작업이라 클릭 시 `window.confirm`으로 한 번 더 확인합니다.
+
+## 브랜드 변동 내보내기 (Excel / PDF)
+
+`src/utils/exportBrandChanges.ts`가 `exceljs`로 회차별 신규 진입/이탈 브랜드 전체를 `.xlsx`로 생성해 다운로드합니다(현재 화면에 펼쳐진 것과 무관하게 항상 전체 이력을 내보냄). PDF는 별도 라이브러리 없이 **브라우저 인쇄**(`window.print()`)를 그대로 사용합니다 — 한글 폰트 임베딩 문제가 없고 텍스트가 그대로 선택 가능한 PDF가 나옵니다.
+
+인쇄가 모달 내용만 나오도록 `src/index.css`에 `@media print` 규칙을 추가했습니다: `.print-area`(모달 내용)만 보이게 하고 나머지는 숨기며, `.no-print`가 붙은 버튼들(닫기, Excel/PDF, 더보기)은 인쇄물에서 제외됩니다. "PDF로 저장" 버튼을 누르면 접혀있던 이전 기록을 먼저 강제로 펼친 뒤(`requestAnimationFrame` 두 번으로 리렌더링을 기다림) `window.print()`를 호출해서, 인쇄 결과에는 항상 전체 이력이 담기게 했습니다.
 
 ## 개발
 

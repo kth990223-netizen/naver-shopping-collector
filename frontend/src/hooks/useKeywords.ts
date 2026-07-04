@@ -6,6 +6,7 @@ import {
 
 import {
   createKeyword,
+  createKeywords,
   getKeywords,
   removeKeyword,
   updateKeywordEnabled,
@@ -26,6 +27,11 @@ export function useKeywords() {
 
   const create = useMutation({
     mutationFn: createKeyword,
+    onSuccess: refresh,
+  });
+
+  const createMany = useMutation({
+    mutationFn: createKeywords,
     onSuccess: refresh,
   });
 
@@ -50,6 +56,7 @@ export function useKeywords() {
   return {
     ...query,
     create,
+    createMany,
     remove,
     toggle,
   };

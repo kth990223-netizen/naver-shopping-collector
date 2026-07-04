@@ -22,6 +22,16 @@ export async function createKeyword(keyword: string) {
   if (error) throw error;
 }
 
+export async function createKeywords(keywords: string[]) {
+  if (keywords.length === 0) return;
+
+  const { error } = await supabase
+    .from("keywords")
+    .insert(keywords.map((keyword) => ({ keyword })));
+
+  if (error) throw error;
+}
+
 export async function removeKeyword(id: string) {
   const { error } = await supabase.from("keywords").delete().eq("id", id);
 

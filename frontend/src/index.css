@@ -11,3 +11,30 @@
 body {
   margin: 0;
 }
+
+/*
+ * "PDF로 저장" 버튼은 window.print()를 그대로 호출한다. 기본 상태로 두면
+ * 사이드바/다른 카드까지 전부 인쇄되므로, .print-area로 표시한 요소만
+ * 보이도록 나머지를 숨기고 그 요소를 페이지 맨 위로 끌어올린다.
+ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+
+  .print-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

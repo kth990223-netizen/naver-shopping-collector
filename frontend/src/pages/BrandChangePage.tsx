@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Line,
   LineChart,
@@ -15,6 +15,10 @@ import {
   type KeywordHistory,
   type RunTransition,
 } from "../services/brandChangeService";
+import {
+  exportBrandChangesToExcel,
+  exportMultipleBrandChangesToExcel,
+} from "../utils/exportBrandChanges";
 
 function formatShortDate(iso: string) {
   const d = new Date(iso);
@@ -57,9 +61,13 @@ function BrandTagList({ brands, tone }: { brands: string[]; tone: "added" | "rem
 
 function KeywordChangeCard({
   history,
+  selected,
+  onToggleSelect,
   onShowDetail,
 }: {
   history: KeywordHistory;
+  selected: boolean;
+  onToggleSelect: () => void;
   onShowDetail: () => void;
 }) {
   const transitions = useMemo(() => getTransitions(history), [history]);
@@ -73,9 +81,19 @@ function KeywordChangeCard({
   return (
     <div className="rounded-xl bg-white p-6 shadow">
       <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900">{history.keyword}</h2>
-          <p className="mt-1 text-xs text-slate-400">최근 {history.runs.length}회 수집 (최근 7일)</p>
+        <div className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggleSelect}
+            className="mt-1.5 h-4 w-4 accent-blue-600"
+            aria-label={`${history.keyword} 선택`}
+          />
+
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">{history.keyword}</h2>
+            <p className="mt-1 text-xs text-slate-400">최근 {history.runs.length}회 수집 (최근 7일)</p>
+          </div>
         </div>
 
         {latest && (
@@ -141,12 +159,19 @@ function TransitionEntry({ t }: { t: RunTransition }) {
   );
 }
 
-function DetailModalBody({ transitions }: { transitions: RunTransition[] }) {
+function DetailModalBody({
+  keyword,
+  transitions,
+}: {
+  keyword: string;
+  transitions: RunTransition[];
+}) {
   const withChange = useMemo(
     () => transitions.filter((t) => t.fromRunAt !== null).reverse(),
     [transitions],
   );
   const [expanded, setExpanded] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   if (withChange.length === 0) {
     return <p className="text-sm text-slate-400">비교할 이전 수집 기록이 없습니다.</p>;
@@ -154,8 +179,43 @@ function DetailModalBody({ transitions }: { transitions: RunTransition[] }) {
 
   const [latestTransition, ...olderTransitions] = withChange;
 
+  async function handleExportExcel() {
+    setExporting(true);
+    try {
+      await exportBrandChangesToExcel(keyword, withChange);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function handlePrint() {
+    // 인쇄에는 전체 기록이 담겨야 하므로, 접혀있으면 먼저 펼친 뒤
+    // 화면이 그 내용으로 다시 그려질 시간을 주고 인쇄 대화상자를 연다.
+    setExpanded(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.print());
+    });
+  }
+
   return (
     <div className="space-y-5">
+      <div className="no-print flex gap-3 border-b border-slate-100 pb-4">
+        <button
+          onClick={handleExportExcel}
+          disabled={exporting}
+          className="text-sm font-semibold text-blue-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {exporting ? "내보내는 중..." : "Excel 다운로드"}
+        </button>
+
+        <button
+          onClick={handlePrint}
+          className="text-sm font-semibold text-blue-600 hover:underline"
+        >
+          PDF로 저장 (인쇄)
+        </button>
+      </div>
+
       <TransitionEntry t={latestTransition} />
 
       {expanded &&
@@ -164,7 +224,7 @@ function DetailModalBody({ transitions }: { transitions: RunTransition[] }) {
       {olderTransitions.length > 0 && (
         <button
           onClick={() => setExpanded((prev) => !prev)}
-          className="text-sm font-semibold text-blue-600 hover:underline"
+          className="no-print text-sm font-semibold text-blue-600 hover:underline"
         >
           {expanded ? "접기" : `이전 기록 더보기 (${olderTransitions.length}건)`}
         </button>
@@ -173,10 +233,52 @@ function DetailModalBody({ transitions }: { transitions: RunTransition[] }) {
   );
 }
 
+/**
+ * 여러 키워드 선택 인쇄(PDF) 전용 뷰. 화면에는 보이지 않고(hidden) 인쇄할 때만
+ * 나타난다(print:block). 키워드마다 페이지를 분리하고(break-after-page),
+ * 제목에 키워드명을 넣어 PDF 뷰어에서 텍스트 검색(Ctrl+F)으로 바로 찾을 수 있게 한다.
+ */
+function MultiPrintReport({ histories }: { histories: KeywordHistory[] }) {
+  return (
+    <div className="print-area hidden print:block">
+      {histories.map((history, i) => {
+        const transitions = getTransitions(history).filter((t) => t.fromRunAt !== null);
+
+        return (
+          <div
+            key={history.keyword}
+            className={i < histories.length - 1 ? "break-after-page" : undefined}
+          >
+            <h1 className="mb-4 text-2xl font-bold text-slate-900">
+              브랜드 변동 — {history.keyword}
+            </h1>
+
+            {transitions.length === 0 ? (
+              <p className="text-sm text-slate-400">비교할 이전 수집 기록이 없습니다.</p>
+            ) : (
+              <div className="space-y-5">
+                {transitions
+                  .slice()
+                  .reverse()
+                  .map((t) => (
+                    <TransitionEntry key={t.toRunAt} t={t} />
+                  ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function BrandChangePage() {
   const { data = [], isLoading } = useKeywordHistories();
   const [search, setSearch] = useState("");
   const [detailKeyword, setDetailKeyword] = useState<string | null>(null);
+  const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set());
+  const [printSelection, setPrintSelection] = useState<KeywordHistory[] | null>(null);
+  const [exportingSelection, setExportingSelection] = useState(false);
 
   const filtered = useMemo(
     () => data.filter((h) => h.keyword.toLowerCase().includes(search.toLowerCase())),
@@ -184,6 +286,48 @@ export default function BrandChangePage() {
   );
 
   const detailHistory = data.find((h) => h.keyword === detailKeyword) ?? null;
+  const selectedHistories = data.filter((h) => selectedKeywords.has(h.keyword));
+
+  useEffect(() => {
+    if (!printSelection) return;
+
+    const clear = () => setPrintSelection(null);
+    window.addEventListener("afterprint", clear);
+    return () => window.removeEventListener("afterprint", clear);
+  }, [printSelection]);
+
+  function toggleSelect(keyword: string) {
+    setSelectedKeywords((prev) => {
+      const next = new Set(prev);
+      if (next.has(keyword)) {
+        next.delete(keyword);
+      } else {
+        next.add(keyword);
+      }
+      return next;
+    });
+  }
+
+  async function handleExportSelectionExcel() {
+    setExportingSelection(true);
+    try {
+      await exportMultipleBrandChangesToExcel(
+        selectedHistories.map((history) => ({
+          keyword: history.keyword,
+          transitions: getTransitions(history),
+        })),
+      );
+    } finally {
+      setExportingSelection(false);
+    }
+  }
+
+  function handlePrintSelection() {
+    setPrintSelection(selectedHistories);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.print());
+    });
+  }
 
   if (isLoading) {
     return <h2 className="text-lg text-slate-500">Loading...</h2>;
@@ -197,12 +341,44 @@ export default function BrandChangePage() {
         키워드별 최근 7일간 브랜드 수 추이입니다. 상세보기에서 회차별 신규/이탈 브랜드를 확인할 수 있습니다.
       </p>
 
-      <input
-        placeholder="키워드 검색..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="mb-5 w-72 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-      />
+      <div className="no-print mb-5 flex items-center gap-3">
+        <input
+          placeholder="키워드 검색..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-72 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        />
+
+        {selectedKeywords.size > 0 && (
+          <div className="flex items-center gap-3 rounded-lg bg-blue-50 px-4 py-2 text-sm">
+            <span className="font-medium text-blue-700">
+              {selectedKeywords.size}개 선택됨
+            </span>
+
+            <button
+              onClick={handleExportSelectionExcel}
+              disabled={exportingSelection}
+              className="font-semibold text-blue-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {exportingSelection ? "내보내는 중..." : "Excel 다운로드"}
+            </button>
+
+            <button
+              onClick={handlePrintSelection}
+              className="font-semibold text-blue-600 hover:underline"
+            >
+              PDF로 저장 (인쇄)
+            </button>
+
+            <button
+              onClick={() => setSelectedKeywords(new Set())}
+              className="text-slate-500 hover:underline"
+            >
+              선택 해제
+            </button>
+          </div>
+        )}
+      </div>
 
       {filtered.length === 0 ? (
         <div className="rounded-xl bg-white p-8 text-center text-sm text-slate-400 shadow">
@@ -214,6 +390,8 @@ export default function BrandChangePage() {
             <KeywordChangeCard
               key={history.keyword}
               history={history}
+              selected={selectedKeywords.has(history.keyword)}
+              onToggleSelect={() => toggleSelect(history.keyword)}
               onShowDetail={() => setDetailKeyword(history.keyword)}
             />
           ))}
@@ -225,8 +403,15 @@ export default function BrandChangePage() {
         onClose={() => setDetailKeyword(null)}
         title={detailHistory ? `${detailHistory.keyword} — 회차별 변동` : ""}
       >
-        {detailHistory && <DetailModalBody transitions={getTransitions(detailHistory)} />}
+        {detailHistory && (
+          <DetailModalBody
+            keyword={detailHistory.keyword}
+            transitions={getTransitions(detailHistory)}
+          />
+        )}
       </Modal>
+
+      {printSelection && <MultiPrintReport histories={printSelection} />}
     </div>
   );
 }
