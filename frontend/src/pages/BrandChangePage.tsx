@@ -279,6 +279,7 @@ export default function BrandChangePage() {
   const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set());
   const [printSelection, setPrintSelection] = useState<KeywordHistory[] | null>(null);
   const [exportingSelection, setExportingSelection] = useState(false);
+  const [columns, setColumns] = useState(4);
 
   const filtered = useMemo(
     () => data.filter((h) => h.keyword.toLowerCase().includes(search.toLowerCase())),
@@ -349,6 +350,22 @@ export default function BrandChangePage() {
           className="w-72 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
         />
 
+        <label className="flex items-center gap-2 text-sm text-slate-500">
+          한 줄에
+          <input
+            type="number"
+            min={1}
+            max={6}
+            value={columns}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              if (Number.isFinite(n)) setColumns(Math.min(6, Math.max(1, n)));
+            }}
+            className="w-16 rounded-lg border border-slate-300 px-2 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          />
+          개
+        </label>
+
         {selectedKeywords.size > 0 && (
           <div className="flex items-center gap-3 rounded-lg bg-blue-50 px-4 py-2 text-sm">
             <span className="font-medium text-blue-700">
@@ -385,7 +402,10 @@ export default function BrandChangePage() {
           {data.length === 0 ? "수집된 데이터가 없습니다." : "검색 결과가 없습니다."}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div
+          className="grid gap-4"
+          style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+        >
           {filtered.map((history) => (
             <KeywordChangeCard
               key={history.keyword}

@@ -5,11 +5,27 @@ import type { Ad } from "../types/ad";
 /**
  * 수집된 광고 목록을 collect_results에 새 로우로 누적 저장한다.
  * (같은 키워드를 다시 수집해도 기존 결과는 지우지 않고 계속 쌓는다.)
+ *
+ * 광고가 0건이어도 "시도했으나 광고 없음"을 기록으로 남긴다 (brand_name=null 마커 1행).
+ * 이렇게 해야 "0건 수집"과 "아예 미수집"이 구분되고, 브랜드 변동 페이지에서
+ * 이전 브랜드가 전부 이탈(→0)한 것으로 보인다.
  */
-export async function saveResults(ads: Ad[]): Promise<void> {
-  if (ads.length === 0) return;
-
+export async function saveResults(keyword: string, ads: Ad[]): Promise<void> {
   const collectedAt = new Date().toISOString();
+
+  if (ads.length === 0) {
+    const { error } = await supabase.from("collect_results").insert({
+      keyword,
+      brand_name: null,
+      product_name: null,
+      product_url: null,
+      ad_rank: 0,
+      collected_at: collectedAt,
+    });
+
+    if (error) throw error;
+    return;
+  }
 
   const rows = ads.map((ad) => ({
     keyword: ad.keyword,

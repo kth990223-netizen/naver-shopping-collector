@@ -36,7 +36,9 @@ export async function runCollection(): Promise<CollectionSummary> {
     `대상 키워드 ${keywords.length}개: ${keywords.map((k) => k.keyword).join(", ")}`
   );
 
+  const runStartedAt = new Date();
   const allAds: Ad[] = [];
+  const perKeyword: { 키워드: string; 수집건수: number }[] = [];
 
   try {
     // Chrome(npm run chrome)이 안 떠있으면 페이지마다 헛되이 재시도하지 않고 바로 실패시킨다.
@@ -57,9 +59,10 @@ export async function runCollection(): Promise<CollectionSummary> {
       }
 
       allAds.push(...ads);
+      perKeyword.push({ 키워드: keywords[i].keyword, 수집건수: ads.length });
 
       try {
-        await saveResults(ads);
+        await saveResults(keywords[i].keyword, ads);
         await upsertBrandsSeen(ads.map((ad) => ad.mallName));
       } catch (err) {
         console.error(`  Supabase 저장 실패:`, (err as Error).message);
@@ -74,7 +77,15 @@ export async function runCollection(): Promise<CollectionSummary> {
     await closeBrowser();
   }
 
-  console.log(`총 ${allAds.length}건 수집 (키워드 ${keywords.length}개)`);
+  const runEndedAt = new Date();
 
-  return { keywordCount: keywords.length, totalAds: allAds.length };
+  console.log("\n===== 수집 요약 =====");
+  console.log(`수집 시작: ${runStartedAt.toLocaleString()}`);
+  console.log(`수집 종료: ${runEndedAt.toLocaleString()}`);
+  console.table(perKeyword);
+  console.log(
+    `총 수집건수: ${allAds.length}건 (수집한 키워드 ${perKeyword.length}개)`
+  );
+
+  return { keywordCount: perKeyword.length, totalAds: allAds.length };
 }

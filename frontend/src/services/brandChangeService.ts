@@ -48,7 +48,11 @@ async function getKeywordHistory(
     if (!runsMap.has(row.collected_at)) {
       runsMap.set(row.collected_at, new Set());
     }
-    runsMap.get(row.collected_at)!.add(row.brand_name);
+    // brand_name이 null인 행은 "광고 0건" 마커다. 실행(collected_at) 자체는 등록하되
+    // 브랜드 집합에는 넣지 않아, 그 회차가 0개로 집계되게 한다.
+    if (row.brand_name) {
+      runsMap.get(row.collected_at)!.add(row.brand_name);
+    }
   }
 
   const runs = [...runsMap.entries()]
