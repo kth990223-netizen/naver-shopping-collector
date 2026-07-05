@@ -2,6 +2,7 @@ import { supabase } from "../lib/supabase";
 
 export interface DashboardStats {
   totalKeywords: number;
+  enabledKeywords: number;
   totalBrands: number;
   todayCollectedCount: number;
   lastCollectedAt: string | null;
@@ -12,8 +13,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const [keywordsRes, brandsRes, todayRes, lastRes] = await Promise.all([
+  const [keywordsRes, enabledRes, brandsRes, todayRes, lastRes] = await Promise.all([
     supabase.from("keywords").select("*", { count: "exact", head: true }),
+    supabase
+      .from("keywords")
+      .select("*", { count: "exact", head: true })
+      .eq("enabled", true),
     supabase.from("brands").select("*", { count: "exact", head: true }),
     supabase
       .from("collect_results")
@@ -27,6 +32,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   ]);
 
   if (keywordsRes.error) throw keywordsRes.error;
+  if (enabledRes.error) throw enabledRes.error;
   if (brandsRes.error) throw brandsRes.error;
   if (todayRes.error) throw todayRes.error;
   if (lastRes.error) throw lastRes.error;
@@ -35,6 +41,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   return {
     totalKeywords: keywordsRes.count ?? 0,
+    enabledKeywords: enabledRes.count ?? 0,
     totalBrands: brandsRes.count ?? 0,
     todayCollectedCount: todayRes.count ?? 0,
     lastCollectedAt: last?.collected_at ?? null,
