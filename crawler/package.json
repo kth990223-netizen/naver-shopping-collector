@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "chrome": "tsx src/scripts/launchChrome.ts",
-    "server": "tsx src/server.ts"
+    "server": "tsx src/server.ts",
+    "create-users": "node scripts/create-users.mjs"
   },
   "keywords": [],
   "author": "",

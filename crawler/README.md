@@ -17,12 +17,14 @@
 
 ```bash
 npm install
-cp .env.example .env   # SUPABASE_URL, SUPABASE_ANON_KEY 채우기
+cp .env.example .env   # SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_EMAIL, SUPABASE_PASSWORD 채우기
 npm run chrome          # 디버깅용 Chrome 실행, 최초 1회 로그인
 npm run dev              # 활성 키워드 전체를 1회 수집하고 종료
 # 또는
 npm run server            # 대시보드 "수집 시작" 버튼이 호출하는 로컬 HTTP 서버로 실행
 ```
+
+`brands`/`collect_results`는 RLS로 로그인한 사용자만 쓸 수 있어서, `SUPABASE_EMAIL`/`SUPABASE_PASSWORD`가 없으면 수집 자체가 실패합니다(`src/lib/supabase.ts`가 시작 시 로그인). 계정이 없다면 `npm run create-users`로 만드세요 (아래 참고).
 
 ## 스크립트
 
@@ -32,6 +34,7 @@ npm run server            # 대시보드 "수집 시작" 버튼이 호출하는 
 | `npm run dev` | 활성화된 키워드를 모두 수집하고 종료 (CLI 1회 실행) |
 | `npm run server` | `127.0.0.1:8787`에서 `POST /collect`, `GET /status`, `POST /shutdown`을 제공하는 로컬 서버. `/collect`는 서버 프로세스 안에서 조용히 수집하는 대신 **새 cmd 창을 띄워 그 안에서 `npm run chrome` → `npm run dev`를 순서대로 실행**한다 (캡차 대응/로그를 그 창에서 바로 확인 가능, 미리 Chrome을 띄워둘 필요 없음). `/shutdown`은 대시보드의 "로컬 서버 종료" 버튼이 호출하며, 수집 진행 중에는 거부한다. Windows 전용(`cmd.exe`/`start` 사용) |
 | `start-server.bat` | `npm run server`를 더블클릭만으로 실행하는 launcher. 대시보드에는 서버를 "시작"하는 버튼을 만들 수 없다 (아래 참고) |
+| `npm run create-users` | Supabase Auth 계정을 대시보드 UI 없이 로컬에서 생성하는 1회성 스크립트(`scripts/create-users.mjs`). service_role 키를 실행 중 터미널로만 입력받고 저장하지 않는다. 자세한 내용은 [../supabase/README.md](../supabase/README.md) 참고 |
 
 ## 수집 로직
 

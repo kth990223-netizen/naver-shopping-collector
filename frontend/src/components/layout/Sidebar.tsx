@@ -1,4 +1,5 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 
 const menus = [
   { name: "📊 대시보드", path: "/" },
@@ -10,6 +11,14 @@ const menus = [
 ];
 
 export default function Sidebar() {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleSignOut() {
+    await signOut();
+    navigate("/");
+  }
+
   return (
     <aside className="flex h-screen w-64 flex-col bg-slate-900 text-white">
       <div className="p-6 border-b border-slate-700">
@@ -32,6 +41,26 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      <div className="border-t border-slate-700 p-4 text-sm">
+        {user ? (
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-slate-300" title={user.email}>
+              {user.email}
+            </span>
+            <button
+              onClick={handleSignOut}
+              className="shrink-0 text-slate-400 hover:text-white"
+            >
+              로그아웃
+            </button>
+          </div>
+        ) : (
+          <NavLink to="/login" className="block text-slate-400 hover:text-white">
+            로그인 (조회는 로그인 없이 가능)
+          </NavLink>
+        )}
+      </div>
     </aside>
   );
 }

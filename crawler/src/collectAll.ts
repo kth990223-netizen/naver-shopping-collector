@@ -7,6 +7,7 @@ import {
 import { getEnabledKeywords } from "./services/keywordService";
 import { saveResults } from "./services/resultService";
 import { upsertBrandsSeen } from "./services/brandService";
+import { supabaseReady } from "./lib/supabase";
 import { Ad } from "./types/ad";
 
 function sleep(ms: number) {
@@ -24,6 +25,8 @@ export interface CollectionSummary {
  */
 export async function runCollection(): Promise<CollectionSummary> {
   console.log("===== 네이버 쇼핑 광고 수집 =====");
+
+  await supabaseReady;
 
   const keywords = await getEnabledKeywords();
 

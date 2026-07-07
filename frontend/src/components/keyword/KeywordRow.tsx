@@ -4,17 +4,19 @@ interface Props {
   keyword: Keyword;
   onToggle: (keyword: Keyword) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  readOnly?: boolean;
 }
 
-export default function KeywordRow({ keyword, onToggle, onDelete }: Props) {
+export default function KeywordRow({ keyword, onToggle, onDelete, readOnly = false }: Props) {
   return (
     <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
       <td className="px-4 py-3 text-center">
         <input
           type="checkbox"
           checked={keyword.enabled}
+          disabled={readOnly}
           onChange={() => onToggle(keyword)}
-          className="h-4 w-4 accent-blue-600"
+          className="h-4 w-4 accent-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
         />
       </td>
 
@@ -25,16 +27,18 @@ export default function KeywordRow({ keyword, onToggle, onDelete }: Props) {
       </td>
 
       <td className="px-4 py-3 text-center">
-        <button
-          onClick={() => {
-            if (confirm("삭제하시겠습니까?")) {
-              onDelete(keyword.id);
-            }
-          }}
-          className="text-sm font-medium text-red-500 hover:text-red-700"
-        >
-          삭제
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => {
+              if (confirm("삭제하시겠습니까?")) {
+                onDelete(keyword.id);
+              }
+            }}
+            className="text-sm font-medium text-red-500 hover:text-red-700"
+          >
+            삭제
+          </button>
+        )}
       </td>
     </tr>
   );

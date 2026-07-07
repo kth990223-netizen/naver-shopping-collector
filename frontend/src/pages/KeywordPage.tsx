@@ -4,6 +4,7 @@ import KeywordForm from "../components/keyword/KeywordForm";
 import KeywordTable from "../components/keyword/KeywordTable";
 
 import { useKeywords } from "../hooks/useKeywords";
+import { useAuth } from "../contexts/AuthContext";
 import type { Keyword } from "../types/keyword";
 
 type FilterOption = "all" | "enabled" | "disabled";
@@ -23,6 +24,7 @@ const SORT_LABELS: Record<SortOption, string> = {
 };
 
 export default function KeywordPage() {
+  const { user } = useAuth();
   const { data = [], isLoading, create, createMany, remove, toggle } = useKeywords();
 
   const [search, setSearch] = useState("");
@@ -123,10 +125,16 @@ export default function KeywordPage() {
         총 {filteredKeywords.length}개의 키워드
       </p>
 
-      <KeywordForm
-        onAdd={handleAdd}
-        loading={create.isPending || createMany.isPending}
-      />
+      {user ? (
+        <KeywordForm
+          onAdd={handleAdd}
+          loading={create.isPending || createMany.isPending}
+        />
+      ) : (
+        <p className="mb-5 rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-500">
+          로그인하면 키워드를 추가·삭제·사용여부 변경할 수 있습니다.
+        </p>
+      )}
 
       <div className="mb-4 flex gap-1 border-b border-slate-200">
         {(Object.keys(FILTER_LABELS) as FilterOption[]).map((key) => (
@@ -169,6 +177,7 @@ export default function KeywordPage() {
         keywords={filteredKeywords}
         onDelete={handleDelete}
         onToggle={handleToggle}
+        readOnly={!user}
       />
     </div>
   );

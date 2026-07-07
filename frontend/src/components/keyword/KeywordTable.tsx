@@ -5,9 +5,10 @@ interface Props {
   keywords: Keyword[];
   onDelete: (id: string) => Promise<void>;
   onToggle: (keyword: Keyword) => Promise<void>;
+  readOnly?: boolean;
 }
 
-export default function KeywordTable({ keywords, onDelete, onToggle }: Props) {
+export default function KeywordTable({ keywords, onDelete, onToggle, readOnly = false }: Props) {
   return (
     <div className="overflow-hidden rounded-xl bg-white shadow">
       <table className="w-full border-collapse">
@@ -34,6 +35,7 @@ export default function KeywordTable({ keywords, onDelete, onToggle }: Props) {
                 keyword={item}
                 onDelete={onDelete}
                 onToggle={onToggle}
+                readOnly={readOnly}
               />
             ))
           )}

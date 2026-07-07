@@ -6,6 +6,7 @@ import { buildRunSummaries } from "../utils/runSummary";
 import { useCollectorStatus, useStartCollection, useStopServer } from "../hooks/useCollector";
 import { useCleanupOldResults } from "../hooks/useCleanupOldResults";
 import { RESULT_RETENTION_DAYS } from "../services/cleanupService";
+import { useAuth } from "../contexts/AuthContext";
 
 // "N분 전 / N시간 전 / N일 전" 형태로 경과 시간을 표시한다.
 function formatElapsed(iso: string): string {
@@ -28,6 +29,7 @@ function formatDuration(startIso: string, endIso: string): string {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const { data, isLoading } = useDashboardStats();
   const { data: histories = [] } = useKeywordHistories();
   const { data: collectorStatus, isError: collectorUnreachable } = useCollectorStatus();
@@ -94,13 +96,15 @@ export default function DashboardPage() {
 
           {cleanupMessage && <span className="text-sm text-slate-400">{cleanupMessage}</span>}
 
-          <button
-            onClick={handleCleanup}
-            disabled={cleanup.isPending}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {cleanup.isPending ? "삭제 중..." : `오래된 데이터 삭제 (${RESULT_RETENTION_DAYS}일+)`}
-          </button>
+          {user && (
+            <button
+              onClick={handleCleanup}
+              disabled={cleanup.isPending}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {cleanup.isPending ? "삭제 중..." : `오래된 데이터 삭제 (${RESULT_RETENTION_DAYS}일+)`}
+            </button>
+          )}
 
           <button
             onClick={() => startCollection.mutate()}
