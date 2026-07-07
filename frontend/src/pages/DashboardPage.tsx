@@ -40,7 +40,7 @@ export default function DashboardPage() {
   const [cleanupMessage, setCleanupMessage] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const latestRun = useMemo(() => buildRunSummaries(histories)[0] ?? null, [histories]);
+  const recentRuns = useMemo(() => buildRunSummaries(histories).slice(0, 3), [histories]);
 
   const wasRunning = useRef(false);
 
@@ -61,7 +61,8 @@ export default function DashboardPage() {
       : "-";
 
   const isRunning = collectorStatus?.running ?? false;
-  const buttonDisabled = collectorUnreachable || isRunning || startCollection.isPending;
+  const confirmedIdle = collectorStatus?.running === false;
+  const buttonDisabled = !confirmedIdle || startCollection.isPending;
 
   async function handleCleanup() {
     const confirmed = window.confirm(
@@ -196,40 +197,43 @@ export default function DashboardPage() {
       <div className="mt-6 rounded-xl bg-white p-6 shadow">
         <h2 className="mb-4 text-gray-500">최근 실행 요약</h2>
 
-        {!latestRun ? (
+        {recentRuns.length === 0 ? (
           <p className="text-sm text-slate-400">수집 실행 기록이 없습니다.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-            <div>
-              <p className="text-xs text-slate-400">수집 시각</p>
-              <p className="mt-1 text-sm font-semibold text-slate-800">
-                {new Date(latestRun.startedAt).toLocaleString()}
-              </p>
-              <p className="text-xs text-slate-400">
-                ~ {new Date(latestRun.endedAt).toLocaleString()}
-              </p>
-            </div>
+          <div className="space-y-4">
+            {recentRuns.map((run) => (
+              <div
+                key={run.startedAt}
+                className="grid grid-cols-2 gap-6 border-b border-slate-100 pb-4 last:border-0 last:pb-0 md:grid-cols-4"
+              >
+                <div>
+                  <p className="text-xs text-slate-400">수집 시각</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-800">
+                    {new Date(run.startedAt).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    ~ {new Date(run.endedAt).toLocaleString()}
+                  </p>
+                </div>
 
-            <div>
-              <p className="text-xs text-slate-400">소요 시간</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">
-                {formatDuration(latestRun.startedAt, latestRun.endedAt)}
-              </p>
-            </div>
+                <div>
+                  <p className="text-xs text-slate-400">소요 시간</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">
+                    {formatDuration(run.startedAt, run.endedAt)}
+                  </p>
+                </div>
 
-            <div>
-              <p className="text-xs text-slate-400">수집 키워드</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">
-                {latestRun.keywords.length}개
-              </p>
-            </div>
+                <div>
+                  <p className="text-xs text-slate-400">수집 키워드</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">{run.keywords.length}개</p>
+                </div>
 
-            <div>
-              <p className="text-xs text-slate-400">총 수집건수</p>
-              <p className="mt-1 text-2xl font-bold text-blue-600">
-                {latestRun.total}건
-              </p>
-            </div>
+                <div>
+                  <p className="text-xs text-slate-400">총 수집건수</p>
+                  <p className="mt-1 text-2xl font-bold text-blue-600">{run.total}건</p>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
