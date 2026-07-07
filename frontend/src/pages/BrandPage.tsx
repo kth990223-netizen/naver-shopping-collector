@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import BrandTable from "../components/brand/BrandTable";
+import TableSkeleton from "../components/common/TableSkeleton";
 import { useBrands } from "../hooks/useBrands";
 
 export default function BrandPage() {
@@ -15,7 +16,7 @@ export default function BrandPage() {
   }, [data, search]);
 
   if (isLoading) {
-    return <h2 className="text-lg text-slate-500">Loading...</h2>;
+    return <TableSkeleton />;
   }
 
   return (
@@ -23,7 +24,9 @@ export default function BrandPage() {
       <h1 className="text-3xl font-bold text-slate-900">브랜드 관리</h1>
 
       <p className="mt-2 mb-6 text-sm text-slate-500">
-        총 {filteredBrands.length}개의 브랜드
+        {search
+          ? `검색 결과 ${filteredBrands.length}개 (전체 ${data.length}개)`
+          : `총 ${data.length}개의 브랜드`}
       </p>
 
       <div className="mb-5">

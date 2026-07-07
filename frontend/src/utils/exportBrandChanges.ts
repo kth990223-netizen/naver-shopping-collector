@@ -1,4 +1,4 @@
-import ExcelJS from "exceljs";
+import type ExcelJS from "exceljs";
 import type { RunTransition } from "../services/brandChangeService";
 
 function diffLabel(diffCount: number | null): string {
@@ -75,6 +75,7 @@ export async function exportBrandChangesToExcel(
   keyword: string,
   transitions: RunTransition[],
 ): Promise<void> {
+  const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
   addKeywordSheet(workbook, keyword, transitions);
   await downloadWorkbook(workbook, `${keyword}_브랜드변동.xlsx`);
@@ -91,6 +92,7 @@ export interface KeywordTransitions {
 export async function exportMultipleBrandChangesToExcel(
   entries: KeywordTransitions[],
 ): Promise<void> {
+  const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
 
   for (const { keyword, transitions } of entries) {

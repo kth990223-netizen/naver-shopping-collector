@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 
 import KeywordForm from "../components/keyword/KeywordForm";
 import KeywordTable from "../components/keyword/KeywordTable";
+import TableSkeleton from "../components/common/TableSkeleton";
 
 import { useKeywords } from "../hooks/useKeywords";
 import { useAuth } from "../contexts/AuthContext";
@@ -24,12 +25,13 @@ const SORT_LABELS: Record<SortOption, string> = {
 };
 
 export default function KeywordPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { data = [], isLoading, create, createMany, remove, toggle } = useKeywords();
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterOption>("all");
   const [sort, setSort] = useState<SortOption>("created_desc");
+  const [error, setError] = useState<string | null>(null);
 
   const filteredKeywords = useMemo(() => {
     const bySearchAndFilter = data.filter((item) => {
@@ -72,6 +74,8 @@ export default function KeywordPage() {
   );
 
   async function handleAdd(keywords: string[]) {
+    setError(null);
+
     const existingLower = new Set(
       data.map((item) => item.keyword.toLowerCase()),
     );
@@ -91,30 +95,44 @@ export default function KeywordPage() {
       toCreate.push(raw);
     }
 
-    if (toCreate.length > 0) {
-      await createMany.mutateAsync(toCreate);
-    }
+    try {
+      if (toCreate.length > 0) {
+        await createMany.mutateAsync(toCreate);
+      }
 
-    if (skipped > 0) {
-      alert(
-        `${toCreate.length}개 등록되었습니다. ${skipped}개는 이미 등록되어 있어 제외했습니다.`,
-      );
+      if (skipped > 0) {
+        alert(
+          `${toCreate.length}개 등록되었습니다. ${skipped}개는 이미 등록되어 있어 제외했습니다.`,
+        );
+      }
+    } catch (err) {
+      setError(`키워드 추가 실패: ${(err as Error).message}`);
     }
   }
 
   async function handleDelete(id: string) {
-    await remove.mutateAsync(id);
+    setError(null);
+    try {
+      await remove.mutateAsync(id);
+    } catch (err) {
+      setError(`키워드 삭제 실패: ${(err as Error).message}`);
+    }
   }
 
   async function handleToggle(item: Keyword) {
-    await toggle.mutateAsync({
-      id: item.id,
-      enabled: !item.enabled,
-    });
+    setError(null);
+    try {
+      await toggle.mutateAsync({
+        id: item.id,
+        enabled: !item.enabled,
+      });
+    } catch (err) {
+      setError(`상태 변경 실패: ${(err as Error).message}`);
+    }
   }
 
-  if (isLoading) {
-    return <h2 className="text-lg text-slate-500">Loading...</h2>;
+  if (isLoading || authLoading) {
+    return <TableSkeleton />;
   }
 
   return (
@@ -122,8 +140,14 @@ export default function KeywordPage() {
       <h1 className="text-3xl font-bold text-slate-900">키워드 관리</h1>
 
       <p className="mt-2 mb-6 text-sm text-slate-500">
-        총 {filteredKeywords.length}개의 키워드
+        {search || filter !== "all"
+          ? `검색 결과 ${filteredKeywords.length}개 (전체 ${counts.all}개)`
+          : `총 ${counts.all}개의 키워드`}
       </p>
+
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>
+      )}
 
       {user ? (
         <KeywordForm

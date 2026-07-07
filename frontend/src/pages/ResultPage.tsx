@@ -1,6 +1,27 @@
 import { useMemo } from "react";
 import { useKeywordHistories } from "../hooks/useKeywordHistories";
 import { buildRunSummaries } from "../utils/runSummary";
+import Skeleton from "../components/common/Skeleton";
+
+function RunCardSkeleton() {
+  return (
+    <div className="rounded-xl bg-white p-6 shadow">
+      <div className="flex items-baseline justify-between gap-2 border-b border-slate-100 pb-3">
+        <div>
+          <Skeleton className="h-4 w-56" />
+          <Skeleton className="mt-2 h-3 w-24" />
+        </div>
+        <Skeleton className="h-6 w-20" />
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-3 lg:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-4 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function ResultPage() {
   const { data = [], isLoading } = useKeywordHistories();
@@ -8,7 +29,17 @@ export default function ResultPage() {
   const runs = useMemo(() => buildRunSummaries(data), [data]);
 
   if (isLoading) {
-    return <h2 className="text-lg text-slate-500">Loading...</h2>;
+    return (
+      <div>
+        <Skeleton className="mb-6 h-8 w-32" />
+        <Skeleton className="mb-6 h-4 w-64" />
+        <div className="space-y-4">
+          <RunCardSkeleton />
+          <RunCardSkeleton />
+          <RunCardSkeleton />
+        </div>
+      </div>
+    );
   }
 
   return (

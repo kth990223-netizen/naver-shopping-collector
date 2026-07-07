@@ -9,6 +9,7 @@ import {
 } from "recharts";
 
 import Modal from "../components/common/Modal";
+import Skeleton from "../components/common/Skeleton";
 import { useKeywordHistories } from "../hooks/useKeywordHistories";
 import {
   getTransitions,
@@ -79,7 +80,7 @@ function KeywordChangeCard({
   }));
 
   return (
-    <div className="rounded-xl bg-white p-6 shadow">
+    <div className="rounded-xl bg-white p-6 shadow transition-shadow duration-150 hover:shadow-lg">
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3">
           <input
@@ -331,7 +332,21 @@ export default function BrandChangePage() {
   }
 
   if (isLoading) {
-    return <h2 className="text-lg text-slate-500">Loading...</h2>;
+    return (
+      <div>
+        <Skeleton className="mb-6 h-8 w-32" />
+        <Skeleton className="mb-6 h-4 w-96" />
+        <div className="grid grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="rounded-xl bg-white p-6 shadow">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="mt-2 h-3 w-32" />
+              <Skeleton className="mt-6 h-32 w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (

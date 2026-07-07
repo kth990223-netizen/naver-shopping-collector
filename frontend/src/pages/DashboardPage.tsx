@@ -7,6 +7,7 @@ import { useCollectorStatus, useStartCollection, useStopServer } from "../hooks/
 import { useCleanupOldResults } from "../hooks/useCleanupOldResults";
 import { RESULT_RETENTION_DAYS } from "../services/cleanupService";
 import { useAuth } from "../contexts/AuthContext";
+import Skeleton from "../components/common/Skeleton";
 
 // "N분 전 / N시간 전 / N일 전" 형태로 경과 시간을 표시한다.
 function formatElapsed(iso: string): string {
@@ -29,7 +30,7 @@ function formatDuration(startIso: string, endIso: string): string {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { data, isLoading } = useDashboardStats();
   const { data: histories = [] } = useKeywordHistories();
   const { data: collectorStatus, isError: collectorUnreachable } = useCollectorStatus();
@@ -48,6 +49,7 @@ export default function DashboardPage() {
 
     if (wasRunning.current && !running) {
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["keyword-histories"] });
     }
 
     wasRunning.current = running;
@@ -94,9 +96,21 @@ export default function DashboardPage() {
             </span>
           )}
 
+          {startCollection.isError && (
+            <span className="text-sm text-red-500">
+              수집 시작 실패: {(startCollection.error as Error).message}
+            </span>
+          )}
+
+          {stopServer.isError && (
+            <span className="text-sm text-red-500">
+              서버 종료 실패: {(stopServer.error as Error).message}
+            </span>
+          )}
+
           {cleanupMessage && <span className="text-sm text-slate-400">{cleanupMessage}</span>}
 
-          {user && (
+          {!authLoading && user && (
             <button
               onClick={handleCleanup}
               disabled={cleanup.isPending}
@@ -125,40 +139,57 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-4 gap-6">
-        <div className="rounded-xl bg-white p-6 shadow">
+        <div className="rounded-xl bg-white p-6 shadow transition-shadow duration-150 hover:shadow-lg">
           <h2 className="text-gray-500">총 키워드</h2>
-          <p className="mt-3 text-3xl font-bold">
-            {isLoading ? "-" : data?.totalKeywords ?? 0}
-          </p>
-          <p className="mt-1 text-xs text-slate-400">
-            {isLoading ? "" : `활성 ${data?.enabledKeywords ?? 0}개 · 비활성 ${(data?.totalKeywords ?? 0) - (data?.enabledKeywords ?? 0)}개`}
-          </p>
+          {isLoading ? (
+            <>
+              <Skeleton className="mt-3 h-8 w-16" />
+              <Skeleton className="mt-2 h-3 w-32" />
+            </>
+          ) : (
+            <>
+              <p className="mt-3 text-3xl font-bold">{data?.totalKeywords ?? 0}</p>
+              <p className="mt-1 text-xs text-slate-400">
+                활성 {data?.enabledKeywords ?? 0}개 · 비활성{" "}
+                {(data?.totalKeywords ?? 0) - (data?.enabledKeywords ?? 0)}개
+              </p>
+            </>
+          )}
         </div>
 
-        <div className="rounded-xl bg-white p-6 shadow">
+        <div className="rounded-xl bg-white p-6 shadow transition-shadow duration-150 hover:shadow-lg">
           <h2 className="text-gray-500">총 브랜드</h2>
-          <p className="mt-3 text-3xl font-bold">
-            {isLoading ? "-" : data?.totalBrands ?? 0}
-          </p>
+          {isLoading ? (
+            <Skeleton className="mt-3 h-8 w-16" />
+          ) : (
+            <p className="mt-3 text-3xl font-bold">{data?.totalBrands ?? 0}</p>
+          )}
         </div>
 
-        <div className="rounded-xl bg-white p-6 shadow">
+        <div className="rounded-xl bg-white p-6 shadow transition-shadow duration-150 hover:shadow-lg">
           <h2 className="text-gray-500">오늘 수집</h2>
-          <p className="mt-3 text-3xl font-bold">
-            {isLoading ? "-" : data?.todayCollectedCount ?? 0}
-          </p>
+          {isLoading ? (
+            <Skeleton className="mt-3 h-8 w-16" />
+          ) : (
+            <p className="mt-3 text-3xl font-bold">{data?.todayCollectedCount ?? 0}</p>
+          )}
         </div>
 
-        <div className="rounded-xl bg-white p-6 shadow">
+        <div className="rounded-xl bg-white p-6 shadow transition-shadow duration-150 hover:shadow-lg">
           <h2 className="text-gray-500">마지막 수집</h2>
-          <p className="mt-3 text-2xl font-bold">
-            {isLoading || !data?.lastCollectedAt
-              ? "-"
-              : formatElapsed(data.lastCollectedAt)}
-          </p>
-          <p className="mt-1 text-xs text-slate-400">
-            {isLoading ? "" : lastCollected}
-          </p>
+          {isLoading ? (
+            <>
+              <Skeleton className="mt-3 h-7 w-20" />
+              <Skeleton className="mt-2 h-3 w-40" />
+            </>
+          ) : (
+            <>
+              <p className="mt-3 text-2xl font-bold">
+                {data?.lastCollectedAt ? formatElapsed(data.lastCollectedAt) : "-"}
+              </p>
+              <p className="mt-1 text-xs text-slate-400">{lastCollected}</p>
+            </>
+          )}
         </div>
       </div>
 

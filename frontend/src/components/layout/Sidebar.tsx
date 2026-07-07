@@ -6,7 +6,6 @@ const menus = [
   { name: "🔍 키워드 관리", path: "/keywords" },
   { name: "📈 브랜드 변동", path: "/brand-changes" },
   { name: "📦 수집 결과", path: "/results" },
-  { name: "🏷 브랜드 관리", path: "/brands" },
   { name: "⚙ 설정", path: "/settings" },
 ];
 
