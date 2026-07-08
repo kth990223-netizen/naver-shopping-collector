@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useKeywordHistories } from "../hooks/useKeywordHistories";
 import { buildRunSummaries } from "../utils/runSummary";
+import { exportRunSummariesToExcel } from "../utils/exportRuns";
 import Skeleton from "../components/common/Skeleton";
 
 function RunCardSkeleton() {
@@ -25,8 +26,18 @@ function RunCardSkeleton() {
 
 export default function ResultPage() {
   const { data = [], isLoading } = useKeywordHistories();
+  const [exporting, setExporting] = useState(false);
 
   const runs = useMemo(() => buildRunSummaries(data), [data]);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await exportRunSummariesToExcel(runs);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -44,7 +55,17 @@ export default function ResultPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-slate-900">수집 결과</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-slate-900">수집 결과</h1>
+
+        <button
+          onClick={handleExport}
+          disabled={runs.length === 0 || exporting}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {exporting ? "내보내는 중..." : "엑셀로 내보내기"}
+        </button>
+      </div>
 
       <p className="mt-2 mb-6 text-sm text-slate-500">
         최근 7일간 수집 실행 {runs.length}회. 실행별로 수집된 키워드와 건수를 보여줍니다.

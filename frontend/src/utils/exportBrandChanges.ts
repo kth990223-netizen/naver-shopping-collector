@@ -1,5 +1,6 @@
 import type ExcelJS from "exceljs";
 import type { RunTransition } from "../services/brandChangeService";
+import { downloadWorkbook } from "./excelExport";
 
 function diffLabel(diffCount: number | null): string {
   if (diffCount === null) return "-";
@@ -55,20 +56,6 @@ function addKeywordSheet(
 
   // 스크롤해도 헤더 행이 계속 보이도록 고정.
   sheet.views = [{ state: "frozen", ySplit: 1 }];
-}
-
-async function downloadWorkbook(workbook: ExcelJS.Workbook, filename: string): Promise<void> {
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export async function exportBrandChangesToExcel(

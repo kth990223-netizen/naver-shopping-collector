@@ -3,10 +3,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useDashboardStats } from "../hooks/useDashboardStats";
 import { useKeywordHistories } from "../hooks/useKeywordHistories";
 import { buildRunSummaries } from "../utils/runSummary";
+import { getTransitions } from "../services/brandChangeService";
 import { useCollectorStatus, useStartCollection, useStopServer } from "../hooks/useCollector";
 import { useCleanupOldResults } from "../hooks/useCleanupOldResults";
 import { RESULT_RETENTION_DAYS } from "../services/cleanupService";
 import { useAuth } from "../contexts/AuthContext";
+import { loadSettings } from "../utils/settings";
+import { sendWebhookNotification } from "../utils/notify";
 import Skeleton from "../components/common/Skeleton";
 
 // "N분 전 / N시간 전 / N일 전" 형태로 경과 시간을 표시한다.
@@ -18,6 +21,11 @@ function formatElapsed(iso: string): string {
   const hours = Math.floor(min / 60);
   if (hours < 24) return `${hours}시간 전`;
   return `${Math.floor(hours / 24)}일 전`;
+}
+
+function isCollectionStale(lastCollectedAtIso: string, thresholdDays: number): boolean {
+  const diffDays = (Date.now() - new Date(lastCollectedAtIso).getTime()) / 86400000;
+  return diffDays > thresholdDays;
 }
 
 // 두 시각 사이 소요 시간을 "X시간 Y분" 형태로 표시한다.
@@ -42,6 +50,24 @@ export default function DashboardPage() {
 
   const recentRuns = useMemo(() => buildRunSummaries(histories).slice(0, 3), [histories]);
 
+  const newBrandsByKeyword = useMemo(() => {
+    return histories
+      .map((history) => {
+        const transitions = getTransitions(history);
+        const latest = transitions[transitions.length - 1];
+        return latest && latest.added.length > 0
+          ? { keyword: history.keyword, added: latest.added }
+          : null;
+      })
+      .filter((entry): entry is { keyword: string; added: string[] } => entry !== null);
+  }, [histories]);
+
+  const settings = useMemo(() => loadSettings(), []);
+
+  const isStale = data?.lastCollectedAt
+    ? isCollectionStale(data.lastCollectedAt, settings.staleDaysThreshold)
+    : false;
+
   const wasRunning = useRef(false);
 
   useEffect(() => {
@@ -50,10 +76,20 @@ export default function DashboardPage() {
     if (wasRunning.current && !running) {
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["keyword-histories"] });
+
+      if (settings.webhookUrl) {
+        const message = collectorStatus?.lastError
+          ? `네이버 쇼핑 수집 실패: ${collectorStatus.lastError}`
+          : "네이버 쇼핑 수집이 완료되었습니다.";
+
+        sendWebhookNotification(settings.webhookUrl, message).catch(() => {
+          // 알림 실패는 수집 결과와 무관하므로 조용히 무시한다.
+        });
+      }
     }
 
     wasRunning.current = running;
-  }, [collectorStatus?.running, queryClient]);
+  }, [collectorStatus?.running, collectorStatus?.lastError, queryClient, settings.webhookUrl]);
 
   const lastCollected =
     data?.lastCollectedAt && data?.lastCollectedKeyword
@@ -185,14 +221,32 @@ export default function DashboardPage() {
             </>
           ) : (
             <>
-              <p className="mt-3 text-2xl font-bold">
+              <p className={`mt-3 text-2xl font-bold ${isStale ? "text-red-600" : ""}`}>
                 {data?.lastCollectedAt ? formatElapsed(data.lastCollectedAt) : "-"}
               </p>
               <p className="mt-1 text-xs text-slate-400">{lastCollected}</p>
+              {isStale && (
+                <p className="mt-1 text-xs font-medium text-red-500">
+                  {settings.staleDaysThreshold}일 이상 수집이 없습니다.
+                </p>
+              )}
             </>
           )}
         </div>
       </div>
+
+      {newBrandsByKeyword.length > 0 && (
+        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-6 shadow">
+          <h2 className="mb-3 font-semibold text-amber-800">최근 실행에서 새로 발견된 브랜드</h2>
+          <ul className="space-y-1 text-sm text-amber-900">
+            {newBrandsByKeyword.map(({ keyword, added }) => (
+              <li key={keyword}>
+                <span className="font-semibold">{keyword}</span>: {added.join(", ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mt-6 rounded-xl bg-white p-6 shadow">
         <h2 className="mb-4 text-gray-500">최근 실행 요약</h2>

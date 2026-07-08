@@ -6,6 +6,7 @@ import TableSkeleton from "../components/common/TableSkeleton";
 
 import { useKeywords } from "../hooks/useKeywords";
 import { useAuth } from "../contexts/AuthContext";
+import { exportKeywordsToExcel } from "../utils/exportKeywords";
 import type { Keyword } from "../types/keyword";
 
 type FilterOption = "all" | "enabled" | "disabled";
@@ -32,6 +33,7 @@ export default function KeywordPage() {
   const [filter, setFilter] = useState<FilterOption>("all");
   const [sort, setSort] = useState<SortOption>("created_desc");
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const filteredKeywords = useMemo(() => {
     const bySearchAndFilter = data.filter((item) => {
@@ -119,6 +121,15 @@ export default function KeywordPage() {
     }
   }
 
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await exportKeywordsToExcel(filteredKeywords);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function handleToggle(item: Keyword) {
     setError(null);
     try {
@@ -137,7 +148,17 @@ export default function KeywordPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-slate-900">키워드 관리</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-slate-900">키워드 관리</h1>
+
+        <button
+          onClick={handleExport}
+          disabled={filteredKeywords.length === 0 || exporting}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {exporting ? "내보내는 중..." : "엑셀로 내보내기"}
+        </button>
+      </div>
 
       <p className="mt-2 mb-6 text-sm text-slate-500">
         {search || filter !== "all"
