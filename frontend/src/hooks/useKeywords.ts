@@ -10,6 +10,7 @@ import {
   getKeywords,
   removeKeyword,
   updateKeywordEnabled,
+  updateKeywordsEnabled,
 } from "../services/keywordService";
 
 export function useKeywords() {
@@ -53,11 +54,25 @@ export function useKeywords() {
     onSuccess: refresh,
   });
 
+  const toggleAll = useMutation({
+    mutationFn: ({
+      ids,
+      enabled,
+    }: {
+      ids: string[];
+      enabled: boolean;
+    }) =>
+      updateKeywordsEnabled(ids, enabled),
+
+    onSuccess: refresh,
+  });
+
   return {
     ...query,
     create,
     createMany,
     remove,
     toggle,
+    toggleAll,
   };
 }

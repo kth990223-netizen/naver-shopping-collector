@@ -49,3 +49,17 @@ export async function updateKeywordEnabled(id: string, enabled: boolean) {
 
   if (error) throw error;
 }
+
+export async function updateKeywordsEnabled(ids: string[], enabled: boolean) {
+  if (ids.length === 0) return;
+
+  const { error } = await supabase
+    .from("keywords")
+    .update({
+      enabled,
+      updated_at: new Date().toISOString(),
+    })
+    .in("id", ids);
+
+  if (error) throw error;
+}

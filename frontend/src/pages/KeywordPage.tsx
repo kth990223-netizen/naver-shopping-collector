@@ -27,7 +27,7 @@ const SORT_LABELS: Record<SortOption, string> = {
 
 export default function KeywordPage() {
   const { user, loading: authLoading } = useAuth();
-  const { data = [], isLoading, create, createMany, remove, toggle } = useKeywords();
+  const { data = [], isLoading, create, createMany, remove, toggle, toggleAll } = useKeywords();
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterOption>("all");
@@ -142,6 +142,19 @@ export default function KeywordPage() {
     }
   }
 
+  // 현재 화면에 보이는(검색/필터 적용된) 키워드들만 일괄 설정/해제한다.
+  async function handleToggleAll(enabled: boolean) {
+    setError(null);
+    try {
+      await toggleAll.mutateAsync({
+        ids: filteredKeywords.map((k) => k.id),
+        enabled,
+      });
+    } catch (err) {
+      setError(`일괄 변경 실패: ${(err as Error).message}`);
+    }
+  }
+
   if (isLoading || authLoading) {
     return <TableSkeleton />;
   }
@@ -222,6 +235,7 @@ export default function KeywordPage() {
         keywords={filteredKeywords}
         onDelete={handleDelete}
         onToggle={handleToggle}
+        onToggleAll={handleToggleAll}
         readOnly={!user}
       />
     </div>
