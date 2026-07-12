@@ -20,6 +20,7 @@ export async function saveResults(keyword: string, ads: Ad[]): Promise<void> {
       product_name: null,
       product_url: null,
       ad_rank: 0,
+      page: null,
       collected_at: collectedAt,
     });
 
@@ -33,6 +34,7 @@ export async function saveResults(keyword: string, ads: Ad[]): Promise<void> {
     product_name: ad.productTitle,
     product_url: ad.productUrl || null,
     ad_rank: ad.rank,
+    page: ad.page,
     collected_at: collectedAt,
   }));
 

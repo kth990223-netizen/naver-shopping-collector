@@ -42,7 +42,16 @@ function DiffText({ diffCount }: { diffCount: number | null }) {
   );
 }
 
-function BrandTagList({ brands, tone }: { brands: string[]; tone: "added" | "removed" }) {
+function BrandTagList({
+  brands,
+  tone,
+  pages,
+}: {
+  brands: string[];
+  tone: "added" | "removed";
+  // 브랜드 → 발견 페이지. page 컬럼 도입 전 데이터는 항목이 없어 배지가 생략된다.
+  pages?: Record<string, number>;
+}) {
   if (brands.length === 0) {
     return <span className="text-sm text-slate-400">없음</span>;
   }
@@ -54,6 +63,9 @@ function BrandTagList({ brands, tone }: { brands: string[]; tone: "added" | "rem
       {brands.map((brand) => (
         <span key={brand} className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${toneClass}`}>
           {brand}
+          {pages?.[brand] !== undefined && (
+            <span className="ml-1 opacity-60">{pages[brand]}p</span>
+          )}
         </span>
       ))}
     </div>
@@ -146,7 +158,7 @@ function TransitionEntry({ t }: { t: RunTransition }) {
           <h4 className="mb-1 text-xs font-semibold uppercase text-slate-400">
             신규 진입 ({t.added.length})
           </h4>
-          <BrandTagList brands={t.added} tone="added" />
+          <BrandTagList brands={t.added} tone="added" pages={t.toPages} />
         </div>
 
         <div>

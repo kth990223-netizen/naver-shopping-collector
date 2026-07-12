@@ -7,6 +7,8 @@ const HISTORY_WINDOW_DAYS = 7;
 export interface RunSnapshot {
   collectedAt: string;
   brands: string[];
+  // 브랜드 → 그 회차에서 발견된 최소 페이지. page 컬럼 도입 전 데이터는 항목 없음.
+  brandPages: Record<string, number>;
 }
 
 export interface KeywordHistory {
@@ -21,6 +23,8 @@ export interface RunTransition {
   diffCount: number | null;
   added: string[];
   removed: string[];
+  // 이번 회차(toRun)에서 각 브랜드가 발견된 페이지 (표시용)
+  toPages: Record<string, number>;
 }
 
 /**
@@ -34,7 +38,7 @@ async function getKeywordHistory(
 ): Promise<KeywordHistory | null> {
   const { data, error } = await supabase
     .from("collect_results")
-    .select("brand_name, collected_at")
+    .select("brand_name, collected_at, page")
     .eq("keyword", keyword)
     .gte("collected_at", sinceIso)
     .order("collected_at", { ascending: true });
@@ -42,25 +46,37 @@ async function getKeywordHistory(
   if (error) throw error;
   if (!data || data.length === 0) return null;
 
-  const runsMap = new Map<string, Set<string>>();
+  const runsMap = new Map<string, Map<string, number | null>>();
 
   for (const row of data) {
     if (!runsMap.has(row.collected_at)) {
-      runsMap.set(row.collected_at, new Set());
+      runsMap.set(row.collected_at, new Map());
     }
     // brand_name이 null인 행은 "광고 0건" 마커다. 실행(collected_at) 자체는 등록하되
     // 브랜드 집합에는 넣지 않아, 그 회차가 0개로 집계되게 한다.
     if (row.brand_name) {
-      runsMap.get(row.collected_at)!.add(row.brand_name);
+      const pages = runsMap.get(row.collected_at)!;
+      const prev = pages.get(row.brand_name);
+      // 같은 브랜드가 여러 페이지에서 발견되면 가장 앞 페이지를 남긴다.
+      if (prev === undefined || (row.page != null && (prev === null || row.page < prev))) {
+        pages.set(row.brand_name, row.page);
+      }
     }
   }
 
   const runs = [...runsMap.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([collectedAt, brandSet]) => ({
-      collectedAt,
-      brands: [...brandSet].sort(),
-    }));
+    .map(([collectedAt, brandMap]) => {
+      const brandPages: Record<string, number> = {};
+      for (const [brand, page] of brandMap) {
+        if (page != null) brandPages[brand] = page;
+      }
+      return {
+        collectedAt,
+        brands: [...brandMap.keys()].sort(),
+        brandPages,
+      };
+    });
 
   return { keyword, runs };
 }
@@ -108,6 +124,7 @@ export function getTransitions(history: KeywordHistory): RunTransition[] {
         diffCount: null,
         added: [],
         removed: [],
+        toPages: run.brandPages,
       };
     }
 
@@ -121,6 +138,7 @@ export function getTransitions(history: KeywordHistory): RunTransition[] {
       diffCount: run.brands.length - prev.brands.length,
       added: run.brands.filter((b) => !prevSet.has(b)),
       removed: prev.brands.filter((b) => !currSet.has(b)),
+      toPages: run.brandPages,
     };
   });
 }

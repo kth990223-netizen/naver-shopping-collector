@@ -5,7 +5,7 @@ describe("getTransitions", () => {
   it("marks the first run as having no previous comparison", () => {
     const history: KeywordHistory = {
       keyword: "키워드A",
-      runs: [{ collectedAt: "2026-01-01T00:00:00.000Z", brands: ["a", "b"] }],
+      runs: [{ collectedAt: "2026-01-01T00:00:00.000Z", brands: ["a", "b"], brandPages: {} }],
     };
 
     const [first] = getTransitions(history);
@@ -21,8 +21,8 @@ describe("getTransitions", () => {
     const history: KeywordHistory = {
       keyword: "키워드A",
       runs: [
-        { collectedAt: "2026-01-01T00:00:00.000Z", brands: ["a", "b"] },
-        { collectedAt: "2026-01-01T01:00:00.000Z", brands: ["b", "c", "d"] },
+        { collectedAt: "2026-01-01T00:00:00.000Z", brands: ["a", "b"], brandPages: {} },
+        { collectedAt: "2026-01-01T01:00:00.000Z", brands: ["b", "c", "d"], brandPages: {} },
       ],
     };
 
@@ -40,8 +40,8 @@ describe("getTransitions", () => {
     const history: KeywordHistory = {
       keyword: "키워드A",
       runs: [
-        { collectedAt: "2026-01-01T00:00:00.000Z", brands: ["a", "b"] },
-        { collectedAt: "2026-01-01T01:00:00.000Z", brands: ["a", "b"] },
+        { collectedAt: "2026-01-01T00:00:00.000Z", brands: ["a", "b"], brandPages: {} },
+        { collectedAt: "2026-01-01T01:00:00.000Z", brands: ["a", "b"], brandPages: {} },
       ],
     };
 

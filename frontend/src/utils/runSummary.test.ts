@@ -11,11 +11,11 @@ describe("buildRunSummaries", () => {
     const histories: KeywordHistory[] = [
       {
         keyword: "키워드A",
-        runs: [{ collectedAt: "2026-01-01T00:00:00.000Z", brands: ["a", "b"] }],
+        runs: [{ collectedAt: "2026-01-01T00:00:00.000Z", brands: ["a", "b"], brandPages: {} }],
       },
       {
         keyword: "키워드B",
-        runs: [{ collectedAt: "2026-01-01T00:05:00.000Z", brands: ["c"] }],
+        runs: [{ collectedAt: "2026-01-01T00:05:00.000Z", brands: ["c"], brandPages: {} }],
       },
     ];
 
@@ -33,8 +33,8 @@ describe("buildRunSummaries", () => {
       {
         keyword: "키워드A",
         runs: [
-          { collectedAt: "2026-01-01T00:00:00.000Z", brands: ["a"] },
-          { collectedAt: "2026-01-01T03:00:00.000Z", brands: ["a", "b"] },
+          { collectedAt: "2026-01-01T00:00:00.000Z", brands: ["a"], brandPages: {} },
+          { collectedAt: "2026-01-01T03:00:00.000Z", brands: ["a", "b"], brandPages: {} },
         ],
       },
     ];
@@ -53,8 +53,8 @@ describe("buildRunSummaries", () => {
       {
         keyword: "키워드A",
         runs: [
-          { collectedAt: "2026-01-01T00:00:00.000Z", brands: ["a"] },
-          { collectedAt: "2026-01-01T01:00:00.000Z", brands: ["a", "b"] },
+          { collectedAt: "2026-01-01T00:00:00.000Z", brands: ["a"], brandPages: {} },
+          { collectedAt: "2026-01-01T01:00:00.000Z", brands: ["a", "b"], brandPages: {} },
         ],
       },
     ];
