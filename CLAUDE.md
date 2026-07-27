@@ -33,15 +33,19 @@ crawler/src/
   config/constants.ts, types/ad.ts, types/keyword.ts, utils/url.ts
 crawler/scripts/create-users.mjs — Supabase Auth 계정 로컬 생성 스크립트 (npm run create-users)
 
-frontend/src/
-  pages/       — DashboardPage, KeywordPage, BrandPage, BrandChangePage, ResultPage, CollectPage, SettingPage, LoginPage
-  contexts/AuthContext.tsx — Supabase Auth 세션 상태(useAuth: user/loading/signIn/signOut)
-  hooks/       — useKeywords, useBrands, useKeywordHistories, useCollector, useDashboardStats, useCleanupOldResults
-  services/    — keywordService, brandService, brandChangeService, collectResultService, collectorClient(로컬 서버 호출), cleanupService, dashboardService
-  components/  — keyword/, brand/, layout/Sidebar(로그인 상태 표시), common/Modal
-  layouts/AdminLayout.tsx
-  utils/runSummary.ts     — 90분 간격으로 collect_results run 추정
-  utils/exportBrandChanges.ts
+frontend/src/   — 기능별(features/) 구조. 각 feature 안에 pages/components/hooks/services/types/utils를 둔다.
+  app/App.tsx    — 라우팅 + AuthProvider
+  shared/        — 두 개 이상의 feature가 쓰는 것만. lib/supabase, components/(Modal, Skeleton, TableSkeleton, Sidebar), layouts/AdminLayout, utils/(excelExport, notify)
+  features/
+    auth/        — contexts/AuthProvider(컴포넌트) + contexts/authContext(컨텍스트 객체) + hooks/useAuth, pages/LoginPage
+                   ※ 컨텍스트 객체를 .ts로 분리한 이유는 .tsx가 컴포넌트 외의 값을 export하면 Fast Refresh가 깨지기 때문
+    keyword/     — KeywordPage, KeywordForm/Row/Table, useKeywords, keywordService, exportKeywords
+    brand/       — BrandPage 계열. **App.tsx에서 라우트가 비활성화된 상태로 보존 중** (PostgREST 1000행 캡 문제)
+    brandChange/ — BrandChangePage, useKeywordHistories, brandChangeService(getKeywordHistories/getTransitions), exportBrandChanges
+    result/      — ResultPage, runSummary(90분 간격으로 collect_results run 추정), exportRuns, collectResultService
+    collect/     — useCollector, collectorClient(로컬 서버 호출)
+    dashboard/   — DashboardPage, useDashboardStats, useCleanupOldResults, dashboardService, cleanupService
+    setting/     — SettingPage, settings
 
 supabase/
   rls_policies.sql — 적용 필요 마이그레이션. 대시보드 SQL Editor에서 실행해야 함 (공개 읽기 + 로그인 쓰기)
