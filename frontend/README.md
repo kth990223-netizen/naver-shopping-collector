@@ -19,12 +19,14 @@
 
 프론트엔드는 별도 API 서버 없이 Supabase(`@supabase/supabase-js`)에 직접 연결합니다.
 
-- `src/lib/supabase.ts` — Supabase 클라이언트 생성
-- `src/services/*Service.ts` — 테이블별 조회/변경 함수 (`keywordService`, `brandService`, `collectResultService`, `dashboardService`, `brandChangeService`, `cleanupService`)
-- `src/hooks/*` — 위 서비스를 `@tanstack/react-query`로 감싼 훅 (`useKeywords`, `useKeywordHistories`, `useDashboardStats`, `useCollector`, ...)
-- `src/utils/runSummary.ts` — 키워드별 수집 이력을 "수집 실행(run)" 단위로 묶어 요약(수집 결과 페이지 + 대시보드 최근 실행 요약에서 사용)
-- `src/utils/exportBrandChanges.ts` — 브랜드 변동 Excel(`exceljs`) 내보내기
-- `src/components/common/Modal.tsx` — 공용 모달 (브랜드 변동 페이지의 "상세보기"에서 사용)
+소스는 `src/{app,shared,features}` 기능별 구조다. 각 feature 안에 `pages/components/hooks/services/types/utils`를 둔다.
+
+- `src/shared/lib/supabase.ts` — Supabase 클라이언트 생성
+- `src/features/*/services/*Service.ts` — 테이블별 조회/변경 함수 (`keyword/keywordService`, `brand/brandService`, `dashboard/dashboardService`, `brandChange/brandChangeService`, `dashboard/cleanupService`)
+- `src/features/*/hooks/*` — 위 서비스를 `@tanstack/react-query`로 감싼 훅 (`useKeywords`, `useKeywordHistories`, `useDashboardStats`, `useCollector`, ...)
+- `src/features/result/utils/runSummary.ts` — 키워드별 수집 이력을 "수집 실행(run)" 단위로 묶어 요약(수집 결과 페이지 + 대시보드 최근 실행 요약에서 사용)
+- `src/features/brandChange/utils/exportBrandChanges.ts` — 브랜드 변동 Excel(`exceljs`) 내보내기
+- `src/shared/components/Modal.tsx` — 공용 모달 (브랜드 변동 페이지의 "상세보기"에서 사용)
 
 ### 1000행 제한 대응 (중요)
 

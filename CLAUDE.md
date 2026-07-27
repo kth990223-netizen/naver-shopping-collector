@@ -42,7 +42,7 @@ frontend/src/   — 기능별(features/) 구조. 각 feature 안에 pages/compon
     keyword/     — KeywordPage, KeywordForm/Row/Table, useKeywords, keywordService, exportKeywords
     brand/       — BrandPage 계열. **App.tsx에서 라우트가 비활성화된 상태로 보존 중** (PostgREST 1000행 캡 문제)
     brandChange/ — BrandChangePage, useKeywordHistories, brandChangeService(getKeywordHistories/getTransitions), exportBrandChanges
-    result/      — ResultPage, runSummary(90분 간격으로 collect_results run 추정), exportRuns, collectResultService
+    result/      — ResultPage, runSummary(90분 간격으로 collect_results run 추정), exportRuns
     collect/     — useCollector, collectorClient(로컬 서버 호출)
     dashboard/   — DashboardPage, useDashboardStats, useCleanupOldResults, dashboardService, cleanupService
     setting/     — SettingPage, settings
